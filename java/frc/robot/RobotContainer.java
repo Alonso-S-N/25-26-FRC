@@ -6,6 +6,7 @@ package frc.robot;
 
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.autonomous;
+import frc.robot.commands.resetPoseByTag;
 import frc.robot.commands.ClimbCommand;
 import frc.robot.commands.GoToPoseCommand;
 import frc.robot.commands.Loc;
@@ -40,6 +41,7 @@ public class RobotContainer {
  private final PS5Controller ps5 = new PS5Controller(0);
  private final ClimbSub ClimbSub = new ClimbSub();
  private final TesteSwerveMotors testeSwerveMotors = new TesteSwerveMotors(swerve);
+ private final resetPoseByTag resetPoseByTag = new resetPoseByTag(swerve);
 
 private final SendableChooser<Command> autoChooser;
 private final TagFollower tagFollower =
@@ -60,8 +62,8 @@ private final TagFollower tagFollower =
   public RobotContainer() {
 
     swerve.configureAutoBuilder();
-
-    NamedCommands.registerCommand("Tests", Commands.runOnce(() -> System.out.println("Funfou")));//new ClimbCommand(ClimbSub, 0.5)));
+    NamedCommands.registerCommand("ResetWithMegaTag2", resetPoseByTag);
+    NamedCommands.registerCommand("FollowTag",tagFollower);
 
       
     if (AutoBuilder.isConfigured()) {

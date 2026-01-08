@@ -46,6 +46,15 @@ public class SwerveSub extends SubsystemBase {
       throw new RuntimeException("Erro ao criar Swerve", e);
     }
 
+    
+    swerve.setGyroOffset(
+      new Rotation3d(
+          0.0,                     
+          0.0,                     
+          Math.PI // yaw (180°)
+      )
+  );
+
     // Confiança da visão (MegaTag)
     swerve.setVisionMeasurementStdDevs(
         VecBuilder.fill(
@@ -58,6 +67,7 @@ public class SwerveSub extends SubsystemBase {
     swerve.setCosineCompensator(false);
 
     configureAutoBuilder();
+
   }
 
   /* =================== DRIVE =================== */
@@ -104,9 +114,9 @@ public class SwerveSub extends SubsystemBase {
     return Optional.of(
         new Transform3d(
             new Translation3d(
-                pose[2], // X frente
-                pose[0], // Y esquerda
-                pose[1]  // Z cima
+                pose[0], // X frente
+                pose[1], // Y esquerda
+                pose[2]  // Z cima
             ),
             new Rotation3d(
                 Math.toRadians(pose[3]),
