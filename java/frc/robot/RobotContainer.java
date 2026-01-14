@@ -13,7 +13,9 @@ import frc.robot.commands.Loc;
 import frc.robot.commands.ShooterCommand;
 import frc.robot.commands.TagFollower;
 import frc.robot.commands.TesteSwerveMotors;
+import frc.robot.subsystems.Armazenamento;
 import frc.robot.subsystems.ClimbSub;
+import frc.robot.subsystems.IntakeSub;
 import frc.robot.subsystems.ShooterSub;
 import frc.robot.subsystems.SwerveSub;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -46,6 +48,8 @@ public class RobotContainer {
  private final resetPoseByTag ResetPoseByTag = new resetPoseByTag(swerve);
  private final ShooterSub shooterSub = new ShooterSub(swerve);
  private final ShooterCommand ShooterCommand = new ShooterCommand(shooterSub);
+ private final IntakeSub Intake = new IntakeSub();
+ private final Armazenamento armazenamento = new Armazenamento();
 
 private final SendableChooser<Command> autoChooser;
 private final TagFollower tagFollower =
@@ -148,10 +152,21 @@ new Trigger(ps5::getSquareButton)
     ));
 
     new Trigger(ps5::getR1Button)
-    .onTrue(Commands.sequence(
-      Commands.runOnce(() -> swerve.SnapToTag()),
-      ShooterCommand));
+    .whileTrue(
+      Commands.deadline(
+        ShooterCommand,
+        new RunCommand(() -> swerve.SnapToTag(), swerve),
+        Commands.startEnd(
+          () -> armazenamento.setMotorArmazenamento(0.5),
+          armazenamento::StopMotorArmazenamento,
+          armazenamento
+        )
+      )
+    );
   }
+  
+  
+  
   public Command getAutonomousCommand() {
     swerve.resetOdometry(initialPose);
     return autoChooser.getSelected();

@@ -8,41 +8,15 @@ package frc.robot.subsystems;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
-import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Translation3d;
-import edu.wpi.first.wpilibj.DigitalInput;
-import edu.wpi.first.wpilibj.DutyCycle;
-import edu.wpi.first.wpilibj.Encoder;
-import edu.wpi.first.wpilibj.Joystick;
-import edu.wpi.first.wpilibj.RobotBase;
-import edu.wpi.first.wpilibj.simulation.DIOSim;
-import edu.wpi.first.wpilibj.simulation.EncoderSim;
-import edu.wpi.first.wpilibj.simulation.JoystickSim;
-import edu.wpi.first.wpilibj.smartdashboard.Mechanism2d;
-import edu.wpi.first.wpilibj.smartdashboard.MechanismLigament2d;
-import edu.wpi.first.wpilibj.smartdashboard.MechanismRoot2d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-import edu.wpi.first.wpilibj.util.Color8Bit;
 import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkBase.PersistMode;
-import edu.wpi.first.math.controller.ArmFeedforward;
-import edu.wpi.first.math.controller.BangBangController;
-import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.math.MathUtil;
 import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.SparkRelativeEncoder;
-import com.revrobotics.spark.SparkBase;
-import com.revrobotics.spark.SparkBase.ControlType;
-import com.revrobotics.spark.SparkBase.PersistMode;
-import com.revrobotics.spark.config.ClosedLoopConfig.FeedbackSensor;
 import com.revrobotics.spark.config.SparkBaseConfig;
-import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
-
-import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class ShooterSub extends SubsystemBase {
 
@@ -69,14 +43,13 @@ private boolean wasAtSpeed = false;
 
     // MotorConfig//
     
-    final SparkMaxConfig Kcoast = new SparkMaxConfig();
   /* ///////////// Se o NEO for Utilizado /////////////////
     SparkMaxConfig shooterConfig = new SparkMaxConfig();
 
     shooterConfig
       .idleMode(IdleMode.kCoast)
       .closedLoop
-        .feedbackSensor(FeedbackSensor.kRelativeEncoder)
+        .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
         .pid(0.0005, 0.0, 0.0)
         .velocityFF(0.00018); 
     
@@ -86,8 +59,7 @@ private boolean wasAtSpeed = false;
       PersistMode.kPersistParameters
     );
     */
-    
-    
+      final SparkMaxConfig Kcoast = new SparkMaxConfig();
       Kcoast.idleMode(SparkBaseConfig.IdleMode.kCoast);
 
       Kcoast.openLoopRampRate(0);
@@ -184,7 +156,7 @@ private boolean wasAtSpeed = false;
   public double getRPMFromDistance(double distanceMeters) {
     double shooterHeight = 0.54; // altura do shooter (m)
     double targetHeight = 1.82;  // m (hub 2022)
-    double deltaH = targetHeight - shooterHeight; // 2.00 m
+    double deltaH = targetHeight - shooterHeight; // diferença de altura (m)
 
     double angleDeg = 45.0; // ângulo fixo (exemplo)
     double angleRad = Math.toRadians(angleDeg);
