@@ -11,14 +11,13 @@ import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
-
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class ClimbSub extends SubsystemBase {
- private SparkMax climbMotor = new SparkMax(20,MotorType.kBrushless);
+ private SparkMax climbMotor = new SparkMax(9,MotorType.kBrushless);
  private SparkMax climbMotor2 = new SparkMax(21,MotorType.kBrushless);
  public RelativeEncoder climbEncoder = climbMotor.getEncoder();
  
@@ -46,15 +45,14 @@ public class ClimbSub extends SubsystemBase {
     }
 
     public void MANUAL(){
-      if (!atUpperLimit()) setMotor(-0.5);
+      if (!atUpperLimit()) setMotor(-1);
       else STOP();
     }
     public void STOP(){
       climbMotor.set(0);
-      
     }
     public void NegMANUAL(){
-    if (!atLowerLimit()) setMotor(0.5);
+    if (!atLowerLimit()) setMotor(1);
     else STOP();
     }
 

@@ -28,9 +28,6 @@ public class Loc extends Command {
 
       private final PIDController headingPID =
       new PIDController(2.0, 0.0, 0.2);
-
-      private final PIDController snapPID =
-    new PIDController(4.0, 0.0, 0.2);
   
     public Loc(SwerveSub swerve, PS5Controller ps5) {
        headingPID.setTolerance(Math.toRadians(2.0));
@@ -38,8 +35,6 @@ public class Loc extends Command {
        this.ps5 = ps5;
 
        headingPID.enableContinuousInput(-Math.PI, Math.PI);
-       snapPID.enableContinuousInput(-Math.PI, Math.PI);
-snapPID.setTolerance(Math.toRadians(2));
     
       addRequirements(swerve);
     }
@@ -55,15 +50,8 @@ snapPID.setTolerance(Math.toRadians(2));
     double rot;
 
     int pov = ps5.getPOV();
-
-    boolean snapPressed = ps5.getR1Button();
-    var tagOpt = swerve.getCameraToTag();
-    
-    if (snapPressed && tagOpt.isPresent()){
-      double yawError = tagOpt.get().getRotation().getZ();
-      rot = snapPID.calculate(yawError, 0.0);
-
-    }else if (pov != -1) {
+     
+    if (pov != -1) {
       rot = rotateToAngle(pov);
     } else {
       rot = applyDeadband(-ps5.getRightX()) * 2;
@@ -100,29 +88,13 @@ private double rotateToAngle(double targetDegrees) {
 
   return MathUtil.clamp(output, -3.0, 3.0);
 }
-
-      
+ 
         @Override
   public void execute() {
     MainControll();
     SmartdashBoard();
   }
 
-  public void POV0(){
-    swerve.drive(new Translation2d(0, 0), 0, true, true);
-  }
-
-  public void POV90(){
-    swerve.drive(new Translation2d(0, 0), 90, true, true);
-  }
-
-  public void POV180(){
-    swerve.drive(new Translation2d(0, 0), 180, true, true);
-  }
-
-  public void POV270(){ 
-    swerve.drive(new Translation2d(0,0), 270, isFinished(), isScheduled());
-  }
     public void SmartdashBoard() {
     SmartDashboard.putNumber("X", x);
     SmartDashboard.putNumber("Y", y);

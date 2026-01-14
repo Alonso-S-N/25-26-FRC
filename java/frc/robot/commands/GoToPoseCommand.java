@@ -18,8 +18,7 @@ public class GoToPoseCommand {
             4
         ),
         0.0
-    ).withTimeout(2)
-    .withName("PathfindToPose");
+    ).withName("PathfindToPose");
 
   }
 }

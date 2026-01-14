@@ -10,9 +10,11 @@ import frc.robot.commands.resetPoseByTag;
 import frc.robot.commands.ClimbCommand;
 import frc.robot.commands.GoToPoseCommand;
 import frc.robot.commands.Loc;
+import frc.robot.commands.ShooterCommand;
 import frc.robot.commands.TagFollower;
 import frc.robot.commands.TesteSwerveMotors;
 import frc.robot.subsystems.ClimbSub;
+import frc.robot.subsystems.ShooterSub;
 import frc.robot.subsystems.SwerveSub;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -41,7 +43,9 @@ public class RobotContainer {
  private final PS5Controller ps5 = new PS5Controller(0);
  private final ClimbSub ClimbSub = new ClimbSub();
  private final TesteSwerveMotors testeSwerveMotors = new TesteSwerveMotors(swerve);
- private final resetPoseByTag resetPoseByTag = new resetPoseByTag(swerve);
+ private final resetPoseByTag ResetPoseByTag = new resetPoseByTag(swerve);
+ private final ShooterSub shooterSub = new ShooterSub(swerve);
+ private final ShooterCommand ShooterCommand = new ShooterCommand(shooterSub);
 
 private final SendableChooser<Command> autoChooser;
 private final TagFollower tagFollower =
@@ -58,11 +62,18 @@ private final TagFollower tagFollower =
       0.0,
       Rotation2d.fromDegrees(0)
     );
+    
+
+   Pose2d EndGamePose = new Pose2d(
+    9.15,
+    5.65,
+   Rotation2d.fromDegrees(0)
+   );
 
   public RobotContainer() {
 
     swerve.configureAutoBuilder();
-    NamedCommands.registerCommand("ResetWithMegaTag2", resetPoseByTag);
+    NamedCommands.registerCommand("ResetWithMegaTag2", ResetPoseByTag);
     NamedCommands.registerCommand("FollowTag",tagFollower);
 
       
@@ -111,15 +122,35 @@ new Trigger(ps5::getTriangleButton)
 .whileTrue(tagFollower);
 
 new Trigger(ps5::getSquareButton)
-  .onTrue(
+  .toggleOnTrue(
     Commands.defer(
       () -> GoToPoseCommand.go(speakerPose),
       Set.of(swerve)
     )
   );
+  new Trigger(ps5::getTouchpadButton)
+  .onTrue(
+    Commands.sequence(
+      ResetPoseByTag,
+      GoToPoseCommand.go(EndGamePose)
+    )
+  );
 
-new Trigger(ps5::getOptionsButton)
-.toggleOnTrue(testeSwerveMotors);
+  new Trigger(ps5::getOptionsButton)
+  .toggleOnTrue(testeSwerveMotors);
+
+  new Trigger(ps5::getL1Button)
+  .whileTrue(
+    Commands.startEnd(
+      () -> shooterSub.DescobrirKV(),
+      () ->shooterSub.StopShooter(),
+    shooterSub
+    ));
+
+    new Trigger(ps5::getR1Button)
+    .onTrue(Commands.sequence(
+      Commands.runOnce(() -> swerve.SnapToTag()),
+      ShooterCommand));
   }
   public Command getAutonomousCommand() {
     swerve.resetOdometry(initialPose);

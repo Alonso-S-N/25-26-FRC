@@ -6,6 +6,7 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.SwerveSub;
 
@@ -18,14 +19,15 @@ public class TagFollower extends Command {
   private final PIDController rotPID = new PIDController(4.0, 0, 0);
 
   private static final double TARGET_DISTANCE = 0.20; // metros
-
+  private double stableStart = -1;
+  private static final double StableTime = 0.25; //sec 
   
 
   public TagFollower(SwerveSub swerve) {
     this.swerve = swerve;
     addRequirements(swerve);
 
-    rotPID.enableContinuousInput(-Math.PI, Math.PI);
+    rotPID.enableContinuousInput(-Math.PI, Math.PI);  
 
     xPID.setTolerance(0.05);
     yPID.setTolerance(0.05);
@@ -51,6 +53,21 @@ public class TagFollower extends Command {
     double rotError = camToTag.getRotation().getZ();
     double rotSpeed = rotPID.calculate(rotError);
 
+    boolean ErrorOK =
+    Math.abs(xError) < 0.05 &&
+    Math.abs(yError) < 0.05 &&
+    Math.abs(rotError) < Math.toRadians(2);
+
+    boolean BichelengoParado = swerve.robotStopped();
+
+    if (ErrorOK && BichelengoParado){
+      if (stableStart < 0){
+        stableStart = Timer.getFPGATimestamp();
+      } else {
+        stableStart = -1;
+      }
+    }
+
     swerve.setChassisSpeeds(
         new ChassisSpeeds(
             MathUtil.clamp(ySpeed, -2.0, 2.0),
@@ -69,9 +86,8 @@ public class TagFollower extends Command {
 
   @Override
   public boolean isFinished() {
-    return xPID.atSetpoint()
-        && yPID.atSetpoint()
-        && rotPID.atSetpoint();
+    return stableStart > 0 &&
+         Timer.getFPGATimestamp() - stableStart > StableTime;
   }
 
   @Override

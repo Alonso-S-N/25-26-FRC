@@ -5,7 +5,6 @@ import swervelib.parser.SwerveParser;
 
 import java.io.File;
 import java.util.Optional;
-
 import com.ctre.phoenix6.swerve.SwerveModule;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
@@ -14,6 +13,7 @@ import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.revrobotics.spark.SparkMax;
 
 import edu.wpi.first.math.VecBuilder;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
@@ -25,6 +25,7 @@ import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.commands.VisionValidator;
 
 public class SwerveSub extends SubsystemBase {
 
@@ -32,8 +33,12 @@ public class SwerveSub extends SubsystemBase {
   private final NetworkTable limelight;
 
   private RobotConfig config;
-
+  private VisionValidator visionValidator = new VisionValidator();
   private final NetworkTable motorTable = NetworkTableInstance.getDefault().getTable("Motors");
+  
+      private final PIDController snapPID =
+    new PIDController(4.0, 0.0, 0.2);
+
 
   public SwerveSub() {
     limelight = NetworkTableInstance.getDefault().getTable("limelight-front");
@@ -51,7 +56,7 @@ public class SwerveSub extends SubsystemBase {
       new Rotation3d(
           0.0,                     
           0.0,                     
-          Math.PI // yaw (180°)
+          Math.toRadians(180) // yaw (0°)
       )
   );
 
@@ -67,6 +72,9 @@ public class SwerveSub extends SubsystemBase {
     swerve.setCosineCompensator(false);
 
     configureAutoBuilder();
+
+    snapPID.enableContinuousInput(-Math.PI, Math.PI);
+    snapPID.setTolerance(Math.toRadians(2));
 
   }
 
@@ -97,6 +105,10 @@ public class SwerveSub extends SubsystemBase {
 
   public void resetOdometry(Pose2d pose) {
     swerve.resetOdometry(pose);
+  }
+
+  public double getTy(){
+    return limelight.getEntry("ty").getDouble(0);
   }
 
   /* =================== LIMELIGHT =================== */
@@ -149,19 +161,41 @@ public class SwerveSub extends SubsystemBase {
   }
   
  
-  private boolean robotStopped() {
+  public boolean robotStopped() {
     ChassisSpeeds speeds = swerve.getRobotVelocity();
     return Math.abs(speeds.vxMetersPerSecond) < 0.05 &&
            Math.abs(speeds.vyMetersPerSecond) < 0.05 &&
            Math.abs(speeds.omegaRadiansPerSecond) < 0.05;
   }
 
+  public boolean SnapToTag(){
+    double rot;
+    var tagOpt = getCameraToTag();
+    
+    if (tagOpt.isPresent()){
+      double yawError = tagOpt.get().getRotation().getZ();
+      rot = snapPID.calculate(yawError, 0.0);
+       if (snapPID.atSetpoint()) {
+        rot = 0.0; 
+    }
+      drive(
+          new Translation2d(0.0, 0.0),
+          rot,
+          true,
+          true
+      );
+  }
+  return snapPID.atSetpoint();
+}
+
   /* =================== PERIODIC =================== */
 
   @Override
   public void periodic() {
-     getMegaTagPose().ifPresent(visionPose -> {
-
+     getMegaTagPose().ifPresent(visionPose -> { 
+        if (!visionValidator.isValid(visionPose)){
+          return;
+        }
       double error =
           visionPose.getTranslation()
               .getDistance(getPose().getTranslation());
@@ -169,6 +203,7 @@ public class SwerveSub extends SubsystemBase {
       // Se erro grande e robô parado -> RESET
       if (error > 0.75 && robotStopped()) {
         swerve.resetOdometry(visionPose);
+        visionValidator.reset();
       }
       // Senão -> correção suave (MegaTag)
       else if (error > 0.15){
@@ -251,5 +286,13 @@ public void testDriveMotor(int moduleIndex, double speed, String name) {
 }
  public void stopModules() {
     swerve.setChassisSpeeds(new ChassisSpeeds());
-    } 
+    }
+
+ public ChassisSpeeds getRobotVelocity() {
+  return swerve.getRobotVelocity();
+ } 
+
+ public boolean HasTarget(){
+  return limelight.getEntry("tv").getDouble(0) == 1;
+ }
 }
