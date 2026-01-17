@@ -149,7 +149,6 @@ private boolean wasAtSpeed = false;
     impulMotor.set(0.0);
   }
 }
-
    */
   }
 

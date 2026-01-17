@@ -1,10 +1,5 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot;
 
-import frc.robot.Constants.OperatorConstants;
 import frc.robot.commands.autonomous;
 import frc.robot.commands.resetPoseByTag;
 import frc.robot.commands.ClimbCommand;
@@ -55,23 +50,23 @@ private final SendableChooser<Command> autoChooser;
 private final TagFollower tagFollower =
     new TagFollower(swerve);
     
-    Pose2d speakerPose = new Pose2d(
-    1.85,
-    5.50,
-    Rotation2d.fromDegrees(180)
+    Pose2d NeutralZone = new Pose2d(
+    7.70,
+    1.31,
+    Rotation2d.fromDegrees(90)
 );
 
     Pose2d initialPose = new Pose2d(
-      0.0,
-      0.0,
+      2.0,
+      7.0,
       Rotation2d.fromDegrees(0)
     );
     
 
    Pose2d EndGamePose = new Pose2d(
-    9.15,
-    5.65,
-   Rotation2d.fromDegrees(0)
+    1.5,
+    3.5,
+   Rotation2d.fromDegrees(150)
    );
 
   public RobotContainer() {
@@ -79,13 +74,16 @@ private final TagFollower tagFollower =
     swerve.configureAutoBuilder();
     NamedCommands.registerCommand("ResetWithMegaTag2", ResetPoseByTag);
     NamedCommands.registerCommand("FollowTag",tagFollower);
+    NamedCommands.registerCommand("IntakeAngOn", new RunCommand(() -> Intake.setIntakeAngle(60), Intake));
+    NamedCommands.registerCommand("ShooterOn", ShooterCommand);
+    NamedCommands.registerCommand("IntakeRotOn", new RunCommand(() -> Intake.setIntakeRotSpeed(0.7), Intake));
+    NamedCommands.registerCommand("IntakeRotOff", new RunCommand(() -> Intake.setIntakeRotSpeed(0.0), Intake));
 
-      
     if (AutoBuilder.isConfigured()) {
       autoChooser = AutoBuilder.buildAutoChooser();
-      System.out.println("✅ AutoChooser criado");
+      System.out.println(" AutoChooser criado");
   } else {
-      System.out.println("❌ AutoBuilder NÃO configurado, AutoChooser vazio");
+      System.out.println("AutoBuilder NÃO configurado, AutoChooser vazio");
       autoChooser = new SendableChooser<>();
   }
   
@@ -128,7 +126,7 @@ new Trigger(ps5::getTriangleButton)
 new Trigger(ps5::getSquareButton)
   .toggleOnTrue(
     Commands.defer(
-      () -> GoToPoseCommand.go(speakerPose),
+      () -> GoToPoseCommand.go(NeutralZone),
       Set.of(swerve)
     )
   );
@@ -143,19 +141,21 @@ new Trigger(ps5::getSquareButton)
   new Trigger(ps5::getOptionsButton)
   .toggleOnTrue(testeSwerveMotors);
 
-  new Trigger(ps5::getL1Button)
+  /*new Trigger(ps5::getL1Button)
   .whileTrue(
     Commands.startEnd(
       () -> shooterSub.DescobrirKV(),
       () ->shooterSub.StopShooter(),
     shooterSub
-    ));
+    )); /*
+    
+    */
 
     new Trigger(ps5::getR1Button)
     .whileTrue(
       Commands.deadline(
         ShooterCommand,
-        new RunCommand(() -> swerve.SnapToTag(), swerve),
+        new RunCommand(() -> swerve.snapToTag(), swerve),
         Commands.startEnd(
           () -> armazenamento.setMotorArmazenamento(0.5),
           armazenamento::StopMotorArmazenamento,
@@ -163,12 +163,10 @@ new Trigger(ps5::getSquareButton)
         )
       )
     );
+
   }
   
-  
-  
   public Command getAutonomousCommand() {
-    swerve.resetOdometry(initialPose);
     return autoChooser.getSelected();
 }
 

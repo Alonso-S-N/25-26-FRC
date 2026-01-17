@@ -20,7 +20,7 @@ public class VisionValidator {
 
                     lastPose = pose;
 
-                    return delta < 0.5;
+                    return delta < 0.90;
   }
 
   public void reset() {

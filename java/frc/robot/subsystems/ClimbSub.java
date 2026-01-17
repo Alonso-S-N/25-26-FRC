@@ -37,7 +37,6 @@ public class ClimbSub extends SubsystemBase {
       climbMotor.configure(Kbrake, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
       climbMotor2.configure(Kbrake2, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
      
-
   }
      
     public void setMotor(double speed){

@@ -50,8 +50,9 @@ public class Loc extends Command {
     double rot;
 
     int pov = ps5.getPOV();
-     
-    if (pov != -1) {
+    if (ps5.getL1Button()) {
+      rot = swerve.getSnapRotation();
+    } else if (pov != -1) {
       rot = rotateToAngle(pov);
     } else {
       rot = applyDeadband(-ps5.getRightX()) * 2;

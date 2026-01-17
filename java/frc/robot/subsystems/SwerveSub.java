@@ -12,6 +12,7 @@ import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.revrobotics.spark.SparkMax;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.*;
@@ -37,7 +38,7 @@ public class SwerveSub extends SubsystemBase {
   private final NetworkTable motorTable = NetworkTableInstance.getDefault().getTable("Motors");
   
       private final PIDController snapPID =
-    new PIDController(4.0, 0.0, 0.2);
+    new PIDController(2.5, 0.0, 0.15);
 
 
   public SwerveSub() {
@@ -71,10 +72,8 @@ public class SwerveSub extends SubsystemBase {
 
     swerve.setCosineCompensator(false);
 
-    configureAutoBuilder();
-
-    snapPID.enableContinuousInput(-Math.PI, Math.PI);
-    snapPID.setTolerance(Math.toRadians(2));
+    snapPID.disableContinuousInput();
+    snapPID.setTolerance(Math.toRadians(5));
 
   }
 
@@ -85,7 +84,7 @@ public class SwerveSub extends SubsystemBase {
       double rotation,
       boolean fieldRelative,
       boolean openLoop
-  ) {
+  ) { 
     swerve.drive(translation, rotation, fieldRelative, openLoop);
   }
 
@@ -109,6 +108,10 @@ public class SwerveSub extends SubsystemBase {
 
   public double getTy(){
     return limelight.getEntry("ty").getDouble(0);
+  }
+
+  public double getTx(){
+    return limelight.getEntry("tx").getDouble(0);
   }
 
   /* =================== LIMELIGHT =================== */
@@ -168,24 +171,88 @@ public class SwerveSub extends SubsystemBase {
            Math.abs(speeds.omegaRadiansPerSecond) < 0.05;
   }
 
-  public boolean SnapToTag(){
-    double rot;
-    var tagOpt = getCameraToTag();
-    
-    if (tagOpt.isPresent()){
-      double yawError = tagOpt.get().getRotation().getZ();
-      rot = snapPID.calculate(yawError, 0.0);
-       if (snapPID.atSetpoint()) {
-        rot = 0.0; 
-    }
-      drive(
-          new Translation2d(0.0, 0.0),
-          rot,
-          true,
-          true
-      );
+ /*public void snapToTag() { 
+  var tagOpt = getCameraToTag();
+
+  if (tagOpt.isEmpty()) {
+    drive(new Translation2d(), 0.0, true, true);
+    snapPID.reset();
+    return;
   }
-  return snapPID.atSetpoint();
+
+  double yawError = tagOpt.get().getRotation().getZ();
+  double rot = snapPID.calculate(yawError, 0.0);
+
+  drive(
+    new Translation2d(0.0, 0.0),
+    MathUtil.clamp(rot, -2.5, 2.5),
+    true,
+    true
+  );
+}  */
+
+public void snapToTag() {
+
+  var tagOpt = getCameraToTag();
+
+  if (tagOpt.isEmpty()) {
+    snapPID.reset();
+    return;
+  }
+
+  Transform3d camToTag = tagOpt.get();
+
+  double yawError = Math.atan2(
+      camToTag.getY(),
+      camToTag.getX()
+  );
+
+  if (Math.abs(yawError) < Math.toRadians(2.5)) {
+    yawError = 0.0;
+  }
+
+  double rot = snapPID.calculate(yawError, 0.0);
+
+  if (Math.abs(rot) < 0.15) {
+    rot = 0.0;
+  }
+
+  double rotAssist = MathUtil.clamp(-rot, -2.0, 2.0);
+
+  ChassisSpeeds current = swerve.getRobotVelocity();
+
+  swerve.setChassisSpeeds(
+      new ChassisSpeeds(
+          current.vxMetersPerSecond,
+          current.vyMetersPerSecond,
+          rotAssist
+      )
+  );
+}
+
+public double getSnapRotation() {
+
+  var tagOpt = getCameraToTag();
+  if (tagOpt.isEmpty()) {
+    snapPID.reset();
+    return 0.0;
+  }
+
+  Transform3d camToTag = tagOpt.get();
+
+  double yawError = Math.atan2(camToTag.getY(), camToTag.getX());
+
+  if (Math.abs(yawError) < Math.toRadians(2.5)) {
+    yawError = 0.0;
+  }
+
+  double rot = snapPID.calculate(yawError, 0.0);
+
+  if (Math.abs(rot) < 0.15) {
+    rot = 0.0;
+  }
+
+  return MathUtil.clamp(-rot, -2.0, 2.0);
 }
 
   /* =================== PERIODIC =================== */
@@ -230,11 +297,11 @@ getMegaTagPose().ifPresent(p ->
     AutoBuilder.configure(
         this::getPose,
         this::resetOdometry,
-        () -> new ChassisSpeeds(),
+        this::getRobotVelocity,
         this::setChassisSpeeds,
         new PPHolonomicDriveController(
-            new PIDConstants(5.0, 0.0, 0.1),
-            new PIDConstants(4.0, 0.0, 0.2)
+            new PIDConstants(3.5, 0.0, 0.1),
+            new PIDConstants(2.5, 0.0, 0.2)
         ),
         config,
         DriverStation::isAutonomous,

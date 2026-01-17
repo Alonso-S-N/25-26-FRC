@@ -14,80 +14,94 @@ public class TagFollower extends Command {
 
   private final SwerveSub swerve;
 
-  private final PIDController xPID = new PIDController(2.0, 0, 0);
-  private final PIDController yPID = new PIDController(2.0, 0, 0);
-  private final PIDController rotPID = new PIDController(4.0, 0, 0);
+  // PIDs
+  private final PIDController xPID  = new PIDController(2.0, 0.0, 0.15);
+  private final PIDController yPID  = new PIDController(1.8, 0.0, 0.10);
+  private final PIDController rotPID = new PIDController(2.2, 0.0, 0.08);
 
   private static final double TARGET_DISTANCE = 0.20; // metros
+  private static final double STABLE_TIME = 0.25;
+
   private double stableStart = -1;
-  private static final double StableTime = 0.25; //sec 
-  
 
   public TagFollower(SwerveSub swerve) {
     this.swerve = swerve;
     addRequirements(swerve);
 
-    rotPID.enableContinuousInput(-Math.PI, Math.PI);  
+    rotPID.disableContinuousInput();
 
-    xPID.setTolerance(0.05);
-    yPID.setTolerance(0.05);
-    rotPID.setTolerance(Math.toRadians(2));
+    xPID.setTolerance(0.03);
+    yPID.setTolerance(0.03);
+    rotPID.setTolerance(2.5);
   }
 
   @Override
   public void execute() {
+
     Optional<Transform3d> tagOpt = swerve.getCameraToTag();
+
     if (tagOpt.isEmpty()) {
       swerve.setChassisSpeeds(new ChassisSpeeds());
+      stableStart = -1;
       return;
     }
 
     Transform3d camToTag = tagOpt.get();
 
-    double xError = camToTag.getX() - TARGET_DISTANCE;
-    double yError = camToTag.getY();
+    // Medidas da câmera
+    double x = camToTag.getX(); // frente
+    double y = camToTag.getY(); // esquerda
 
-    double xSpeed = xPID.calculate(xError);
-    double ySpeed = yPID.calculate(yError);
+    double xError = x - TARGET_DISTANCE;
+    double yError = y; 
 
-    double rotError = camToTag.getRotation().getZ();
-    double rotSpeed = rotPID.calculate(rotError);
+    double yawError = Math.atan2(y, x);
 
-    boolean ErrorOK =
-    Math.abs(xError) < 0.05 &&
-    Math.abs(yError) < 0.05 &&
-    Math.abs(rotError) < Math.toRadians(2);
+    // PID
+    double rotSpeed = rotPID.calculate(yawError, 0.0);
+    double xSpeed   = xPID.calculate(xError, 0.0);
+    double ySpeed   = yPID.calculate(yError, 0.0);
 
-    boolean BichelengoParado = swerve.robotStopped();
+    // DEADZONES
+    if (Math.abs(yawError) < Math.toRadians(2.5)) rotSpeed = 0.0;
+    if (Math.abs(xError) < 0.03) xSpeed = 0.0;
+    if (Math.abs(yError) < 0.03) ySpeed = 0.0;
+    
+    // não anda antes de alinhar
+    boolean yawAligned = Math.abs(yawError) < Math.toRadians(4.0);
+    if (!yawAligned) {
+      xSpeed = 0.0; 
+    } 
+    double xScale = MathUtil.clamp(Math.abs(yawError) / Math.toRadians(10), 0.2, 1.0);
+xSpeed *= xScale;
 
-    if (ErrorOK && BichelengoParado){
-      if (stableStart < 0){
-        stableStart = Timer.getFPGATimestamp();
-      } else {
-        stableStart = -1;
-      }
-    }
-
+    // APLICA VELOCIDADES
     swerve.setChassisSpeeds(
         new ChassisSpeeds(
-            MathUtil.clamp(ySpeed, -2.0, 2.0),
-            MathUtil.clamp(-xSpeed, -2.0, 2.0),
-            MathUtil.clamp(rotSpeed, -2.0, 2.0)
+            MathUtil.clamp(-ySpeed, -2.0, 2.0),
+            MathUtil.clamp( -xSpeed, -1.0, 1.0),
+            MathUtil.clamp( rotSpeed, -1.2, 1.2)
         )
     );
 
-    System.out.printf(
-  "X: %.2f | Y: %.2f | Yaw: %.2f%n",
-  camToTag.getX(),
-  camToTag.getY(),
-  Math.toDegrees(camToTag.getRotation().getZ())
-);
+    boolean errorOK =
+        Math.abs(xError)   < 0.05 &&
+        Math.abs(yError)   < 0.05 &&
+        Math.abs(yawError) < Math.toRadians(3.0);
+
+    if (errorOK && swerve.robotStopped()) {
+      if (stableStart < 0) {
+        stableStart = Timer.getFPGATimestamp();
+      }
+    } else {
+      stableStart = -1;
+    }
   }
 
   @Override
   public boolean isFinished() {
     return stableStart > 0 &&
-         Timer.getFPGATimestamp() - stableStart > StableTime;
+           Timer.getFPGATimestamp() - stableStart > STABLE_TIME;
   }
 
   @Override

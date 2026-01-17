@@ -30,8 +30,8 @@ public class Armazenamento extends SubsystemBase {
 
     motorArmazenamento.configure(
       configArmazenamento,
-      SparkMax.ResetMode.kResetSafeParameters,
-      SparkMax.PersistMode.kPersistParameters
+        SparkMax.ResetMode.kResetSafeParameters,
+        SparkMax.PersistMode.kPersistParameters
     );
 
   }

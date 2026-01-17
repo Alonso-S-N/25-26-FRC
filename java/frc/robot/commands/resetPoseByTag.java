@@ -18,9 +18,9 @@ public class resetPoseByTag extends InstantCommand {
     swerve.getMegaTagPose().ifPresentOrElse(
         pose -> {
           swerve.resetOdometry(pose);
-          System.out.println("✅ Pose resetada pelo MegaTag: " + pose);
+          System.out.println(" Pose resetada pelo MegaTag: " + pose);
         },
-        () -> System.out.println("❌ MegaTag sem pose válida")
+        () -> System.out.println(" MegaTag sem pose válida")
     );
   }
 }
