@@ -2,16 +2,13 @@ package frc.robot.subsystems;
 
 import swervelib.SwerveDrive;
 import swervelib.parser.SwerveParser;
-
 import java.io.File;
 import java.util.Optional;
-import com.ctre.phoenix6.swerve.SwerveModule;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.revrobotics.spark.SparkMax;
-
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.PIDController;
@@ -38,7 +35,7 @@ public class SwerveSub extends SubsystemBase {
   private final NetworkTable motorTable = NetworkTableInstance.getDefault().getTable("Motors");
   
       private final PIDController snapPID =
-    new PIDController(2.5, 0.0, 0.15);
+    new PIDController(2.5, 0.0, 0.0);
 
 
   public SwerveSub() {
@@ -72,8 +69,9 @@ public class SwerveSub extends SubsystemBase {
 
     swerve.setCosineCompensator(false);
 
-    snapPID.disableContinuousInput();
-    snapPID.setTolerance(Math.toRadians(5));
+    snapPID.setTolerance(Math.toRadians(2.5));
+    snapPID.enableContinuousInput(Math.toRadians(-90), Math.toRadians(90));
+
 
   }
 
@@ -113,7 +111,10 @@ public class SwerveSub extends SubsystemBase {
   public double getTx(){
     return limelight.getEntry("tx").getDouble(0);
   }
-
+  
+  public double getTA(){
+    return limelight.getEntry("tx").getDouble(0);
+  }
   /* =================== LIMELIGHT =================== */
   public Optional<Transform3d> getCameraToTag() {
     if (limelight.getEntry("tv").getDouble(0) != 1) {
@@ -191,69 +192,35 @@ public class SwerveSub extends SubsystemBase {
   );
 }  */
 
-public void snapToTag() {
-
-  var tagOpt = getCameraToTag();
-
-  if (tagOpt.isEmpty()) {
-    snapPID.reset();
-    return;
-  }
-
-  Transform3d camToTag = tagOpt.get();
-
-  double yawError = Math.atan2(
-      camToTag.getY(),
-      camToTag.getX()
-  );
-
-  if (Math.abs(yawError) < Math.toRadians(2.5)) {
-    yawError = 0.0;
-  }
-
-  double rot = snapPID.calculate(yawError, 0.0);
-
-  if (Math.abs(rot) < 0.15) {
-    rot = 0.0;
-  }
-
-  double rotAssist = MathUtil.clamp(-rot, -2.0, 2.0);
-
-  ChassisSpeeds current = swerve.getRobotVelocity();
-
-  swerve.setChassisSpeeds(
-      new ChassisSpeeds(
-          current.vxMetersPerSecond,
-          current.vyMetersPerSecond,
-          rotAssist
-      )
-  );
-}
-
+ 
 public double getSnapRotation() {
 
-  var tagOpt = getCameraToTag();
-  if (tagOpt.isEmpty()) {
+  if (!HasTarget()) {
     snapPID.reset();
     return 0.0;
   }
 
-  Transform3d camToTag = tagOpt.get();
+  double txDeg = getTx();
 
-  double yawError = Math.atan2(camToTag.getY(), camToTag.getX());
-
-  if (Math.abs(yawError) < Math.toRadians(2.5)) {
-    yawError = 0.0;
+  if (Math.abs(txDeg) < 1.0) {
+    snapPID.reset();
+    return 0.0;
   }
 
-  double rot = snapPID.calculate(yawError, 0.0);
+  double txRad = Math.toRadians(txDeg);
 
-  if (Math.abs(rot) < 0.15) {
-    rot = 0.0;
-  }
+  double rot = snapPID.calculate(txRad, 0.0);
 
   return MathUtil.clamp(-rot, -2.0, 2.0);
 }
+
+
+
+public void cancelSnap() {
+  snapPID.reset();
+}
+
+
 
   /* =================== PERIODIC =================== */
 
@@ -266,7 +233,7 @@ public double getSnapRotation() {
       double error =
           visionPose.getTranslation()
               .getDistance(getPose().getTranslation());
-
+ 
       // Se erro grande e robô parado -> RESET
       if (error > 0.75 && robotStopped()) {
         swerve.resetOdometry(visionPose);
@@ -279,6 +246,11 @@ public double getSnapRotation() {
             Timer.getFPGATimestamp()
         );
       }
+
+      ChassisSpeeds speeds = swerve.getRobotVelocity();
+       if (Math.abs(speeds.omegaRadiansPerSecond)>2.0){
+        return;
+       }
     });
     SmartDashboard.putBoolean("LL/HasTarget",
     limelight.getEntry("tv").getDouble(0) == 1);

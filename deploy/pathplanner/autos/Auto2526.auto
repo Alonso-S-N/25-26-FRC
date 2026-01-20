@@ -15,9 +15,27 @@
                 }
               },
               {
+                "type": "named",
+                "data": {
+                  "name": "IntakeAngOn"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "IntakeRotOn"
+                }
+              },
+              {
                 "type": "path",
                 "data": {
                   "pathName": "Auto2526P2"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "IntakeRotOff"
                 }
               },
               {
@@ -27,9 +45,21 @@
                 }
               },
               {
+                "type": "named",
+                "data": {
+                  "name": "ShooterOn"
+                }
+              },
+              {
                 "type": "path",
                 "data": {
                   "pathName": "Auto2526P4"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "ClimbAuto"
                 }
               }
             ]

@@ -4,14 +4,11 @@
 
 package frc.robot.commands;
 
-import frc.robot.Robot;
 import frc.robot.subsystems.SwerveSub;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.kinematics.SwerveModuleState;
 import edu.wpi.first.wpilibj.PS5Controller;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import org.littletonrobotics.junction.Logger;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -50,12 +47,16 @@ public class Loc extends Command {
     double rot;
 
     int pov = ps5.getPOV();
-    if (ps5.getL1Button()) {
-      rot = swerve.getSnapRotation();
-    } else if (pov != -1) {
+     if (pov != -1) {
       rot = rotateToAngle(pov);
+
+    } else  if (ps5.getL1Button()) {
+      rot = swerve.getSnapRotation();
+      headingPID.reset();
     } else {
       rot = applyDeadband(-ps5.getRightX()) * 2;
+      swerve.cancelSnap();
+      headingPID.reset();
     }
     
     swerve.drive(
@@ -64,15 +65,6 @@ public class Loc extends Command {
     true,
     true
 );
-  
-
-    SwerveModuleState[] states;
-    
-
-    if (Robot.isSimulation()){
-      Logger.recordOutput("Swerve/Pose:", swerve.getPose());
-      Logger.recordOutput("Swerve/ModuleStates",swerve.getModules());
-    }
 }
       
 private double rotateToAngle(double targetDegrees) {
