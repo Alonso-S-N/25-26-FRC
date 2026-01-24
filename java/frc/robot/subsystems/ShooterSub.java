@@ -154,7 +154,7 @@ private boolean wasAtSpeed = false;
 
   public double getRPMFromDistance(double distanceMeters) {
     double shooterHeight = 0.54; // altura do shooter (m)
-    double targetHeight = 1.82;  // m (hub 2022)
+    double targetHeight = 1.82;  // m (hub 2026)
     double deltaH = targetHeight - shooterHeight; // diferença de altura (m)
 
     double angleDeg = 45.0; // ângulo fixo (exemplo)
