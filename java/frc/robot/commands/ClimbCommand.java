@@ -1,4 +1,3 @@
-
 package frc.robot.commands;
 
 import edu.wpi.first.math.MathUtil;
@@ -53,8 +52,6 @@ public class ClimbCommand extends Command {
     climbPID.reset();
   }
 
-
-  // Returns true when the command should end.
   @Override
   public boolean isFinished() {
     return climbPID.atSetpoint();

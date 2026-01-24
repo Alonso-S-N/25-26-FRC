@@ -11,10 +11,11 @@ import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.revrobotics.spark.SparkMax;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -34,8 +35,10 @@ public class SwerveSub extends SubsystemBase {
   private VisionValidator visionValidator = new VisionValidator();
   private final NetworkTable motorTable = NetworkTableInstance.getDefault().getTable("Motors");
   
-      private final PIDController snapPID =
-    new PIDController(2.5, 0.0, 0.0);
+    TrapezoidProfile.Constraints constraints = new TrapezoidProfile.Constraints(3.0, 2.0);
+
+      private final ProfiledPIDController snapPID =
+    new ProfiledPIDController(2.5, 0.0, 0.0,constraints);
 
 
   public SwerveSub() {
@@ -71,14 +74,12 @@ public class SwerveSub extends SubsystemBase {
 
     snapPID.setTolerance(Math.toRadians(2.5));
     snapPID.enableContinuousInput(Math.toRadians(-90), Math.toRadians(90));
-
-
   }
 
   /* =================== DRIVE =================== */
 
   public void drive(
-      Translation2d translation,
+      Translation2d translation,  
       double rotation,
       boolean fieldRelative,
       boolean openLoop
@@ -171,39 +172,18 @@ public class SwerveSub extends SubsystemBase {
            Math.abs(speeds.vyMetersPerSecond) < 0.05 &&
            Math.abs(speeds.omegaRadiansPerSecond) < 0.05;
   }
-
- /*public void snapToTag() { 
-  var tagOpt = getCameraToTag();
-
-  if (tagOpt.isEmpty()) {
-    drive(new Translation2d(), 0.0, true, true);
-    snapPID.reset();
-    return;
-  }
-
-  double yawError = tagOpt.get().getRotation().getZ();
-  double rot = snapPID.calculate(yawError, 0.0);
-
-  drive(
-    new Translation2d(0.0, 0.0),
-    MathUtil.clamp(rot, -2.5, 2.5),
-    true,
-    true
-  );
-}  */
-
  
 public double getSnapRotation() {
 
   if (!HasTarget()) {
-    snapPID.reset();
+    snapPID.reset(0.0,0.0);
     return 0.0;
   }
 
   double txDeg = getTx();
 
   if (Math.abs(txDeg) < 1.0) {
-    snapPID.reset();
+    snapPID.reset(0.0,0.0);
     return 0.0;
   }
 
@@ -217,7 +197,7 @@ public double getSnapRotation() {
 
 
 public void cancelSnap() {
-  snapPID.reset();
+  snapPID.reset(0.0,0.0);
 }
 
 

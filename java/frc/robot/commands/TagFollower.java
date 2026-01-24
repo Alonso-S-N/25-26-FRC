@@ -3,9 +3,10 @@ package frc.robot.commands;
 import java.util.Optional;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.SwerveSub;
@@ -15,9 +16,12 @@ public class TagFollower extends Command {
   private final SwerveSub swerve;
 
   /* ================= PID ================= */
-  private final PIDController xPID   = new PIDController(2.0, 0.0, 0.15);
-  private final PIDController yPID   = new PIDController(1.8, 0.0, 0.10);
-  private final PIDController rotPID = new PIDController(2.2, 0.0, 0.08);
+
+  TrapezoidProfile.Constraints constraints = new TrapezoidProfile.Constraints(3.0, 2.0);
+
+  private final ProfiledPIDController xPID   = new ProfiledPIDController(2.0, 0.0, 0.15,constraints);
+  private final ProfiledPIDController yPID   = new ProfiledPIDController(1.8, 0.0, 0.10,constraints);
+  private final ProfiledPIDController rotPID = new ProfiledPIDController(2.2, 0.0, 0.08,constraints);
 
   /* ================= CONSTANTES ================= */
   private static final double TARGET_DISTANCE = 0.25; // metros
@@ -58,13 +62,14 @@ public class TagFollower extends Command {
     double xSpeed = xPID.calculate(x, 0.0);
     if (Math.abs(swerve.getTx()) < 2.0 ) xSpeed = 0.0;
     
-   /*  VERSÂO CORRETA TEORICAMENTE (TROCAR APÓS A INVERSÂO DA LIMELIGHT SE A NOVA VERSÂO NÂO FUNCIONAR MAIS.
     double ySpeed = yPID.calculate(y, TARGET_DISTANCE); 
-    if (yPID.atSetpoint()) ySpeed = 0.0;
-    */
-    double ySpeed = yPID.calculate(TARGET_DISTANCE - y,0.0);
-    if (yPID.atSetpoint()) ySpeed = 0.0;
 
+    boolean distanceOK = Math.abs(y - TARGET_DISTANCE) < 0.05;
+
+    if (distanceOK) {
+      ySpeed = 0.0;
+    }
+  
     reachedDistance = yPID.atSetpoint();
 
 if (xPID.atSetpoint() && yPID.atSetpoint() && rotPID.atSetpoint()) {
@@ -72,6 +77,10 @@ if (xPID.atSetpoint() && yPID.atSetpoint() && rotPID.atSetpoint()) {
   reachedDistance = true;
   return;
 }
+ 
+ySpeed = MathUtil.applyDeadband(ySpeed, 0.04);
+xSpeed = MathUtil.applyDeadband(xSpeed, 0.03);
+rotSpeed = MathUtil.applyDeadband(rotSpeed, 0.02);
 
     swerve.setChassisSpeeds(
         new ChassisSpeeds(

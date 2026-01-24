@@ -8,6 +8,9 @@ package frc.robot.subsystems;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
+
 import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import edu.wpi.first.wpilibj.Timer;
@@ -27,6 +30,8 @@ public class ShooterSub extends SubsystemBase {
   // Comentar se o Neo For Utilizado (Deixar Controle ClosedLoop Interno) //
   private PIDController shooterPID = new PIDController(0.0005, 0, 0);
   private SimpleMotorFeedforward shooterFeedforward = new SimpleMotorFeedforward(0.2, 0.12);
+
+  private NetworkTable limelight2;
   
   private static final double RPM_TOLERANCE = 75; // ±75 RPM
 private static final double STABLE_TIME = 0.2; // segundos
@@ -40,6 +45,8 @@ private boolean wasAtSpeed = false;
 
   public ShooterSub(SwerveSub swerve) {
     this.swerve = swerve;
+
+    limelight2 = NetworkTableInstance.getDefault().getTable("limelight2");
 
     // MotorConfig//
     
@@ -82,6 +89,10 @@ private boolean wasAtSpeed = false;
     wasAtSpeed = false;
   }
 
+  public boolean GetDetected(){
+    return limelight2.getEntry("Fuel").getDouble(0) == 1.0;
+  }
+
   public boolean atTargetRPM(double targetRPM) {
     double currentRPM = shooterEncoder.getVelocity();
     double error = Math.abs(currentRPM - targetRPM);
@@ -113,6 +124,10 @@ private boolean wasAtSpeed = false;
 
   public void shoot(double targetRPM) {
     if (targetRPM <= 0) {
+      StopShooter();
+      return;
+    }
+    if (!GetDetected()){
       StopShooter();
       return;
     }
@@ -189,7 +204,7 @@ private boolean wasAtSpeed = false;
 
   public double getDistanceToTag() {
     double cameraHeight = 0.6;
-    double targetHeight = 2.64;   //2.64 metros (hub 2022)
+    double targetHeight = 1.82;   
     double cameraAngle = 20;  
     double ty = swerve.getTy();
 
