@@ -3,6 +3,8 @@ package frc.robot.subsystems;
 import swervelib.SwerveDrive;
 import swervelib.parser.SwerveParser;
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.PIDConstants;
@@ -10,7 +12,6 @@ import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.revrobotics.spark.SparkMax;
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.*;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
@@ -30,7 +31,7 @@ public class SwerveSub extends SubsystemBase {
 
   private final SwerveDrive swerve;
   private final NetworkTable limelight;
-
+  private static final List<Integer>  ValidTags = Arrays.asList(9,11,8,7,6,1,12,15,17,28,24,22,23,31,13,29,27);
   private RobotConfig config;
   private VisionValidator visionValidator = new VisionValidator();
   private final NetworkTable motorTable = NetworkTableInstance.getDefault().getTable("Motors");
@@ -61,19 +62,11 @@ public class SwerveSub extends SubsystemBase {
       )
   );
 
-    // Confiança da visão (MegaTag)
-    swerve.setVisionMeasurementStdDevs(
-        VecBuilder.fill(
-            0.05, // X
-            0.05, // Y
-            9999  // Gyro manda
-        )
-    );
-
     swerve.setCosineCompensator(false);
 
     snapPID.setTolerance(Math.toRadians(2.5));
     snapPID.enableContinuousInput(Math.toRadians(-90), Math.toRadians(90));
+
   }
 
   /* =================== DRIVE =================== */
@@ -114,8 +107,13 @@ public class SwerveSub extends SubsystemBase {
   }
   
   public double getTA(){
-    return limelight.getEntry("tx").getDouble(0);
+    return limelight.getEntry("ta").getDouble(0);
   }
+
+  public int getTagID() {
+    return (int) limelight.getEntry("tid").getDouble(-1);
+  }
+
   /* =================== LIMELIGHT =================== */
   public Optional<Transform3d> getCameraToTag() {
     if (limelight.getEntry("tv").getDouble(0) != 1) {
@@ -183,7 +181,6 @@ public double getSnapRotation() {
   double txDeg = getTx();
 
   if (Math.abs(txDeg) < 1.0) {
-    snapPID.reset(0.0,0.0);
     return 0.0;
   }
 
@@ -206,32 +203,55 @@ public void cancelSnap() {
 
   @Override
   public void periodic() {
+    if (!HasTarget()){
+      return;
+    }
+
+    int tagID = getTagID();
+    if (!ValidTags.contains(tagID)){
+      return;
+    }
+    
      getMegaTagPose().ifPresent(visionPose -> { 
         if (!visionValidator.isValid(visionPose)){
           return;
-        }
+         }
+
       double error =
           visionPose.getTranslation()
               .getDistance(getPose().getTranslation());
- 
+
       // Se erro grande e robô parado -> RESET
-      if (error > 0.75 && robotStopped()) {
+      if (error > 0.75 && robotStopped() && getTA() > 0.8) {
         swerve.resetOdometry(visionPose);
         visionValidator.reset();
       }
       // Senão -> correção suave (MegaTag)
       else if (error > 0.15){
+  
+        ChassisSpeeds speeds = swerve.getRobotVelocity();
+        if (Math.abs(speeds.omegaRadiansPerSecond)>2.0){
+         return;
+        }
+
+double distance = error;
+ 
+
+swerve.setVisionMeasurementStdDevs(
+    VisionConfidenceScaler.computeStdDevs(
+        distance,
+        speeds,
+        getTA()
+    )
+);
         swerve.addVisionMeasurement(
             visionPose,
             Timer.getFPGATimestamp()
         );
       }
 
-      ChassisSpeeds speeds = swerve.getRobotVelocity();
-       if (Math.abs(speeds.omegaRadiansPerSecond)>2.0){
-        return;
-       }
-    });
+      });
+
     SmartDashboard.putBoolean("LL/HasTarget",
     limelight.getEntry("tv").getDouble(0) == 1);
 

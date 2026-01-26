@@ -199,7 +199,6 @@ private boolean wasAtSpeed = false;
     rpm = MathUtil.clamp(rpm, 0.0, 5000);
 
     return rpm;
-
   }  
 
   public double getDistanceToTag() {

@@ -3,7 +3,6 @@ package frc.robot.commands;
 import edu.wpi.first.math.geometry.Pose2d;
 
 public class VisionValidator {
-
   private Pose2d lastPose = null;
 
   private static final double MAX_TRANSLATION_JUMP = 0.4; // m
@@ -11,10 +10,13 @@ public class VisionValidator {
 
   public boolean isValid(Pose2d pose) {
 
+
+
     if (lastPose == null) {
       lastPose = pose;
       return true;
     }
+  
 
     double translationDelta =
         pose.getTranslation()
@@ -27,10 +29,15 @@ public class VisionValidator {
                 .getRadians()
         );
 
-    lastPose = pose;
 
-    return translationDelta < MAX_TRANSLATION_JUMP &&
+    boolean Valid = translationDelta < MAX_TRANSLATION_JUMP &&
            rotationDelta < MAX_ROTATION_JUMP;
+
+           if (Valid){
+              lastPose = pose;  
+           }
+
+           return Valid;
   }
 
   public void reset() {
