@@ -20,14 +20,12 @@ public class VisionConfidenceScaler {
      
      confidence *= MathUtil.clamp(1.0 - distance / 5.0, 0.2, 1.0);
 
-    // Rotação rápida = ruim
     confidence *= MathUtil.clamp(
         1.0 - Math.abs(speeds.omegaRadiansPerSecond) / 3.0,
         0.3,
         1.0
     );
 
-    // Área pequena = longe / ruim
     confidence *= MathUtil.clamp(ta / 1.5, 0.3, 1.0);
 
     double std = MathUtil.interpolate(

@@ -170,6 +170,8 @@ public class SwerveSub extends SubsystemBase {
            Math.abs(speeds.vyMetersPerSecond) < 0.05 &&
            Math.abs(speeds.omegaRadiansPerSecond) < 0.05;
   }
+
+  // ====================== SNAP ====================== //
  
 public double getSnapRotation() {
 
@@ -190,7 +192,25 @@ public double getSnapRotation() {
 
   return MathUtil.clamp(-rot, -2.0, 2.0);
 }
+ 
+//================ SNAP COMPENSADO ================ //
 
+public double getSnapRotationCompensated(Rotation2d desiredHeading) {
+
+  Rotation2d current = getHeading();
+
+  double errorRad =
+      desiredHeading.minus(current).getRadians();
+
+  if (Math.abs(errorRad) < Math.toRadians(1.0)) {
+    snapPID.reset(0.0, 0.0);
+    return 0.0;
+  }
+
+  double rot = snapPID.calculate(errorRad, 0.0);
+
+  return MathUtil.clamp(rot, -2.0, 2.0);
+}
 
 
 public void cancelSnap() {

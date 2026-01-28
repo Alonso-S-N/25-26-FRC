@@ -39,7 +39,7 @@ public class RobotContainer {
  private final ShooterCommand ShooterCommand = new ShooterCommand(shooterSub);
  private final IntakeSub Intake = new IntakeSub();
  private final Armazenamento armazenamento = new Armazenamento();
- private final snapToTag snapToTag = new snapToTag(swerve);
+ private final snapToTag snapToTag = new snapToTag(swerve, shooterSub);
 
 private final SendableChooser<Command> autoChooser;
 private final TagFollower tagFollower =
@@ -98,7 +98,7 @@ private final TagFollower tagFollower =
     new Trigger(ps5::getR2Button)
     .whileTrue(
         Commands.startEnd(
-            () -> ClimbSub.setMotor(-0.5),
+            () -> ClimbSub.setMotor(-0.1),
             () -> ClimbSub.STOP(),
             ClimbSub
         )
@@ -106,7 +106,7 @@ private final TagFollower tagFollower =
 new Trigger(ps5::getL2Button)
 .whileTrue(
   Commands.startEnd(
-      () -> ClimbSub.setMotor(0.5),
+      () -> ClimbSub.setMotor(0.1),
       () -> ClimbSub.STOP(),
       ClimbSub
   )

@@ -1,217 +1,195 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot.subsystems;
 
-
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
-
 import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.config.SparkBaseConfig;
+import com.revrobotics.spark.config.ClosedLoopConfig.FeedbackSensor;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 
 public class ShooterSub extends SubsystemBase {
 
-  SparkMax ShooterMotor = new SparkMax(15,MotorType.kBrushless);
-  SparkMax impulMotor = new SparkMax(16,MotorType.kBrushless);
+  private final SparkMax shooterMotor = new SparkMax(15, MotorType.kBrushless);
+  private final SparkMax feederMotor  = new SparkMax(16, MotorType.kBrushless);
 
-  private final RelativeEncoder shooterEncoder = ShooterMotor.getEncoder();
-  // Comentar se o Neo For Utilizado (Deixar Controle ClosedLoop Interno) //
-  private PIDController shooterPID = new PIDController(0.0005, 0, 0);
-  private SimpleMotorFeedforward shooterFeedforward = new SimpleMotorFeedforward(0.2, 0.12);
+  private final RelativeEncoder shooterEncoder = shooterMotor.getEncoder();
+  private final NetworkTable limelight =
+      NetworkTableInstance.getDefault().getTable("limelight2");
 
-  private NetworkTable limelight2;
-  
-  private static final double RPM_TOLERANCE = 75; // ±75 RPM
-private static final double STABLE_TIME = 0.2; // segundos
+  private static final double RpmTolerance = 75;
+  private static final double STABLE_TIME = 0.2;
 
-  private final double g = 9.81; // gravidade
+  private static final double G = 9.81;
+  private static final double shotinhoAngDeg = 45.0;
+  private static final double WHEEL_RADIUS = 0.05;
 
   private final Timer rpmStableTimer = new Timer();
-private boolean wasAtSpeed = false;
+  private boolean wasAtSpeed = false;
 
-  private SwerveSub swerve;
+  private final SwerveSub swerve;
 
   public ShooterSub(SwerveSub swerve) {
     this.swerve = swerve;
 
-    limelight2 = NetworkTableInstance.getDefault().getTable("limelight2");
-
-    // MotorConfig//
-    
-  /* ///////////// Se o NEO for Utilizado /////////////////
     SparkMaxConfig shooterConfig = new SparkMaxConfig();
-
-    shooterConfig
-      .idleMode(IdleMode.kCoast)
-      .closedLoop
+    shooterConfig.idleMode(IdleMode.kCoast)
+        .closedLoop
         .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-        .pid(0.0005, 0.0, 0.0)
-        .velocityFF(0.00018); 
-    
-    ShooterMotor.configure(
-      shooterConfig,
-      ResetMode.kResetSafeParameters,
-      PersistMode.kPersistParameters
+        .pid(0.0005, 0, 0);
+
+    shooterMotor.configure(
+        shooterConfig,
+        ResetMode.kResetSafeParameters,
+        PersistMode.kPersistParameters
     );
-    */
-      final SparkMaxConfig Kcoast = new SparkMaxConfig();
-      Kcoast.idleMode(SparkBaseConfig.IdleMode.kCoast);
-
-      Kcoast.openLoopRampRate(0);
-
-      ShooterMotor.configure(Kcoast, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
-      impulMotor.configure(Kcoast, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
-    
   }
 
-  public void DescobrirKV(){
-    ShooterMotor.set(0.4);
+
+  public boolean HasTarget() {
+    return limelight.getEntry("tv").getDouble(0) == 1.0;
   }
 
-  public void StopShooter(){
-    ShooterMotor.set(0);
-    impulMotor.set(0);
-
+  public void StopShooter() {
+    shooterMotor.set(0);
+    feederMotor.set(0);
     rpmStableTimer.stop();
     rpmStableTimer.reset();
     wasAtSpeed = false;
   }
+ // ================== RPM CHECK ================== //
+  private boolean atTargetRPM(double targetRPM) {
+    double error = Math.abs(shooterEncoder.getVelocity() - targetRPM);
 
-  public boolean GetDetected(){
-    return limelight2.getEntry("Fuel").getDouble(0) == 1.0;
-  }
-
-  public boolean atTargetRPM(double targetRPM) {
-    double currentRPM = shooterEncoder.getVelocity();
-    double error = Math.abs(currentRPM - targetRPM);
-  
-    boolean atSpeed = error <= RPM_TOLERANCE;
-  
+    boolean atSpeed = error <= RpmTolerance;
     if (atSpeed) {
       if (!wasAtSpeed) {
         rpmStableTimer.restart();
         wasAtSpeed = true;
       }
     } else {
-      rpmStableTimer.stop();
       rpmStableTimer.reset();
       wasAtSpeed = false;
     }
-  
     return wasAtSpeed && rpmStableTimer.hasElapsed(STABLE_TIME);
   }
+
+ //================== RPM FROM DISTANCE ================== //
+  public double getRPMFromDistance(double distanceMeters) {
+
+    double shooterHeight = 0.67;
+    double targetHeight  = 1.82;
+    double deltaH = targetHeight - shooterHeight;
+
+    double angleRad = Math.toRadians(shotinhoAngDeg);
+
+    double cos2 = Math.cos(angleRad) * Math.cos(angleRad);
+    double inner = distanceMeters * Math.tan(angleRad) - deltaH;
+
+    if (inner <= 0) return 0;
+
+    double v = Math.sqrt(
+        (G * distanceMeters * distanceMeters) /
+        (2.0 * cos2 * inner)
+    );
+
+    double wheelCircumference = 2 * Math.PI * WHEEL_RADIUS;
+    return MathUtil.clamp((v / wheelCircumference) * 60.0, 0, 5000); // se necessario multiplicar pelo arrasto aero (1.25 ou 25%) :p
+  }
+
+  private double rpmToVelocity(double rpm) {
+    return (rpm / 60.0) * (2.0 * Math.PI * WHEEL_RADIUS);
+  }
+
+  private double getTimeOfFlight(double distance, double rpm) {
+    if (rpm <= 0) return 0.0;
+
+    double v = rpmToVelocity(rpm);
+    return distance /
+        (v * Math.cos(Math.toRadians(shotinhoAngDeg)));
+  }
   
-// Lembrar de Comentar este metodo se for utilizar o NEO com controle de velocidade interno //
-  private double rpmToRadPerSec(double rpm) {
-    return rpm * 2.0 * Math.PI / 60.0;
+  //=============== COMPENSATED AIM =============== //
+
+  public Rotation2d getCompensatedAim(double distanceMeters) {
+
+    double rpm = getRPMFromDistance(distanceMeters);
+    if (rpm <= 0) {
+      return swerve.getHeading();
+    }
+
+    double timeOfFlight = getTimeOfFlight(distanceMeters, rpm);
+
+    ChassisSpeeds speeds = swerve.getRobotVelocity();
+    Translation2d robotVelocity =
+        new Translation2d(
+            speeds.vyMetersPerSecond,
+            speeds.vxMetersPerSecond
+        );
+
+    Translation2d offset = robotVelocity.times(timeOfFlight);
+
+    double txRad = Math.toRadians(swerve.getTx());
+    Rotation2d targetDirection =
+        swerve.getHeading().plus(new Rotation2d(txRad));
+
+    Translation2d targetVector =
+        new Translation2d(distanceMeters, targetDirection);
+
+    Translation2d compensatedVector =
+        targetVector.minus(offset);
+
+    return compensatedVector.getAngle();
   }
 
-  public boolean HasTarget(){
-   return  swerve.HasTarget();
-  }
+ // ===================== SHOOT ===================== //
+  public void shoot(double distanceMeters) {
 
-  public void shoot(double targetRPM) {
+    if (!HasTarget()) {
+      StopShooter();
+      return;
+    }
+
+    double targetRPM = getRPMFromDistance(distanceMeters) ;
     if (targetRPM <= 0) {
       StopShooter();
       return;
-    }
-    if (!GetDetected()){
-      StopShooter();
-      return;
-    }
+    } 
 
-    double currentRPM = shooterEncoder.getVelocity();
-  
-    double pidOutput = shooterPID.calculate(currentRPM, targetRPM);
-  
-    double targetRadPerSec = rpmToRadPerSec(targetRPM);
-    double feedforwardVolts = shooterFeedforward.calculate(targetRadPerSec);
-  
-    double outputVolts = MathUtil.clamp(pidOutput + feedforwardVolts, -12.0, 12.0);
-  
-    ShooterMotor.setVoltage(outputVolts);
-   if (atTargetRPM(targetRPM)){
-    impulMotor.set(0.6);
-   } else {
-    impulMotor.set(0.0);
-   }
+    shooterMotor.getClosedLoopController()
+        .setReference(targetRPM, ControlType.kVelocity);
 
-     /*  ///////////////// SE O NEO FOR UTILIZADO /////////////////
-   * public void shoot(double targetRPM) {
-  if (targetRPM <= 0) {
-    StopShooter();
-    return;
+    if (atTargetRPM(targetRPM)) {
+      feederMotor.set(0.6);
+    } else {
+      feederMotor.set(0.0);
+    }
   }
 
-  ShooterMotor.getClosedLoopController()
-      .setReference(targetRPM, ControlType.kVelocity);
-
-  if (atTargetRPM(targetRPM)) {
-    impulMotor.set(0.6);
-  } else {
-    impulMotor.set(0.0);
-  }
-}
-   */
-  }
-
-  public double getRPMFromDistance(double distanceMeters) {
-    double shooterHeight = 0.54; // altura do shooter (m)
-    double targetHeight = 1.82;  // m (hub 2026)
-    double deltaH = targetHeight - shooterHeight; // diferença de altura (m)
-
-    double angleDeg = 45.0; // ângulo fixo (exemplo)
-    double angleRad = Math.toRadians(angleDeg);
-
-    double r = 0.05; // raio da roda do shooter (m)
-    double x = distanceMeters;
-
-    // Denominador: 2 * cos^2(angle) * ( x * tan(angle) - deltaH )
-    double cos2 = Math.cos(angleRad) * Math.cos(angleRad);
-    double inner = x * Math.tan(angleRad) - deltaH;
-    double denom = 2.0 * cos2 * inner;
-
-    // Se denom <= 0, não é possivel o arremessar com esse ângulo.
-    if (denom <= 0.0) {
-        return 0.0;
-    }
-
-    double numerator = g * x * x;
-    double v = Math.sqrt(numerator / denom); // velocidade inicial necessária (m/s)
-
-    double wheelCircumference = 2.0 * Math.PI * r; // m/rev
-    double revPerSec = v / wheelCircumference;
-    double rpm = revPerSec * 60.0;
-
-    // limites práticos
-    rpm = MathUtil.clamp(rpm, 0.0, 5000);
-
-    return rpm;
-  }  
-
+// ================= DISTANCE TO TAG ================= //
   public double getDistanceToTag() {
-    double cameraHeight = 0.6;
-    double targetHeight = 1.82;   
-    double cameraAngle = 20;  
+    double cameraHeight = 0.67;
+    double targetHeight = 1.82;
+    double cameraAngle = 20;
     double ty = swerve.getTy();
 
     return (targetHeight - cameraHeight) /
-          Math.tan(Math.toRadians(cameraAngle + ty));
-}
-  
+           Math.tan(Math.toRadians(cameraAngle + ty));
+  }
+
   @Override
   public void periodic() {
+    SmartDashboard.putNumber("Shooter/RPM", shooterEncoder.getVelocity());
   }
 }

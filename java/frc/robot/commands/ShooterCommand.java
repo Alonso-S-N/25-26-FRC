@@ -18,7 +18,9 @@ public class ShooterCommand extends Command {
   @Override
   public void execute() {
     if (shotinho.HasTarget()){
-    shotinho.shoot(shotinho.getRPMFromDistance(shotinho.getDistanceToTag()));
+      shotinho.shoot(
+        shotinho.getDistanceToTag()
+      );
     }
   }
 
