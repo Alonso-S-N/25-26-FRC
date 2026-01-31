@@ -22,12 +22,16 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import edu.wpi.first.units.Units;
+
 import java.util.Set;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 
 
 public class RobotContainer {
+  
 
  private final SwerveSub swerve = new SwerveSub();
  private final Loc loc;
@@ -40,6 +44,7 @@ public class RobotContainer {
  private final IntakeSub Intake = new IntakeSub();
  private final Armazenamento armazenamento = new Armazenamento();
  private final snapToTag snapToTag = new snapToTag(swerve, shooterSub);
+ private final SysIdRoutine shooterSysId;
 
 private final SendableChooser<Command> autoChooser;
 private final TagFollower tagFollower =
@@ -64,11 +69,39 @@ private final TagFollower tagFollower =
    Rotation2d.fromDegrees(150)
    );
 
+   private static final double IntakeRet = 0.23;
+   private static final double IntakeOff = 0.70;
+
   public RobotContainer() {
+
+    shooterSysId =
+    new SysIdRoutine(
+        new SysIdRoutine.Config(
+            Units.Volts.of(0.5).per(Units.Second),
+            Units.Volts.of(4),
+            null,
+            null
+        ),
+        new SysIdRoutine.Mechanism(
+            shooterSub::sysIdDrive,
+            log -> {
+              log.motor("shooter")
+                 .voltage(shooterSub.sysIdGetAppliedVoltage())
+                 .angularVelocity(
+                     Units.RadiansPerSecond.of(
+                         shooterSub.sysIdGetVelocityRadPerSec()
+                     )
+                 );
+            },
+            shooterSub
+        )
+    );
+
 
     NamedCommands.registerCommand("ResetWithMegaTag2", ResetPoseByTag);
     NamedCommands.registerCommand("FollowTag",tagFollower);
-    NamedCommands.registerCommand("IntakeAngOn", new RunCommand(() -> Intake.setIntakeAngle(60), Intake));
+    NamedCommands.registerCommand("IntakeAngOn", new RunCommand(() -> Intake.setIntakeAngle(IntakeOff), Intake));
+    NamedCommands.registerCommand("IntakeAngOff", new RunCommand(() -> Intake.setIntakeAngle(IntakeRet),Intake));
     NamedCommands.registerCommand("ShooterOn", ShooterCommand);
     NamedCommands.registerCommand("IntakeRotOn", new RunCommand(() -> Intake.setIntakeRotSpeed(0.7), Intake));
     NamedCommands.registerCommand("IntakeRotOff", new RunCommand(() -> Intake.setIntakeRotSpeed(0.0), Intake));
@@ -95,28 +128,42 @@ private final TagFollower tagFollower =
 
   public void configurationBindings() {
    
-    new Trigger(ps5::getR2Button)
-    .whileTrue(
-        Commands.startEnd(
-            () -> ClimbSub.setMotor(-0.1),
-            () -> ClimbSub.STOP(),
-            ClimbSub
-        )
-    );
-new Trigger(ps5::getL2Button)
-.whileTrue(
-  Commands.startEnd(
-      () -> ClimbSub.setMotor(0.1),
-      () -> ClimbSub.STOP(),
-      ClimbSub
-  )
-);
+//     new Trigger(ps5::getR2Button)
+//     .whileTrue(
+//         Commands.startEnd(
+//             () -> ClimbSub.setMotor(-0.1),
+//             () -> ClimbSub.STOP(),
+//             ClimbSub
+//         )
+//     );
+// new Trigger(ps5::getL2Button)
+// .whileTrue(
+//   Commands.startEnd(
+//       () -> ClimbSub.setMotor(0.1),
+//       () -> ClimbSub.STOP(),
+//       ClimbSub
+//   )
+// ); 
 
-new Trigger(ps5::getCircleButton)
-.onTrue(new ClimbCommand(ClimbSub, 0.50));
+
+// new Trigger(ps5::getCircleButton)
+// .onTrue(new ClimbCommand(ClimbSub, 0.50));
+
+// new Trigger(ps5::getCrossButton)
+// .onTrue(new ClimbCommand(ClimbSub, 0.0));
+
+new Trigger(ps5::getL2Button)
+.onTrue(sysIdDynamicForward());
+
+new Trigger(ps5::getR2Button)
+.onTrue(sysIdQuasiForward());
 
 new Trigger(ps5::getCrossButton)
-.onTrue(new ClimbCommand(ClimbSub, 0.0));
+.onTrue(sysIdDynamicReverse());
+
+new Trigger(ps5::getCircleButton)
+.onTrue(sysIdQuasiReverse());
+
 
 new Trigger(ps5::getTriangleButton)
 .whileTrue(tagFollower);
@@ -163,7 +210,24 @@ new Trigger(ps5::getSquareButton)
     );
 
   }
+
+  public Command sysIdQuasiForward() {
+    return shooterSysId.quasistatic(SysIdRoutine.Direction.kForward);
+  }
   
+  public Command sysIdQuasiReverse() {
+    return shooterSysId.quasistatic(SysIdRoutine.Direction.kReverse);
+  }
+  
+  public Command sysIdDynamicForward() {
+    return shooterSysId.dynamic(SysIdRoutine.Direction.kForward);
+  }
+  
+  public Command sysIdDynamicReverse() {
+    return shooterSysId.dynamic(SysIdRoutine.Direction.kReverse);
+  }
+  
+
   public Command getAutonomousCommand() {
     return autoChooser.getSelected();
 }

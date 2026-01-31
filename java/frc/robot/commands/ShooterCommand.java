@@ -13,7 +13,8 @@ public class ShooterCommand extends Command {
   }
 
   @Override
-  public void initialize() {}
+  public void initialize() {
+  }
 
   @Override
   public void execute() {
@@ -21,6 +22,8 @@ public class ShooterCommand extends Command {
       shotinho.shoot(
         shotinho.getDistanceToTag()
       );
+    } else {
+      shotinho.StopShooter();
     }
   }
 

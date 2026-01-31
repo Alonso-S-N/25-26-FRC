@@ -12,6 +12,7 @@ import com.revrobotics.spark.config.SparkMaxConfig;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj.DutyCycleEncoder;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class IntakeSub extends SubsystemBase {
@@ -20,11 +21,11 @@ public class IntakeSub extends SubsystemBase {
    
   private final DutyCycleEncoder intakeAngleEncoder = new DutyCycleEncoder(0);
 
-  private PIDController IntakeAngPid = new PIDController(0.02, 0, 0);
+  private PIDController IntakeAngPid = new PIDController(0.02, 0.0, 0.0);
 
-  private static final double MIN_ANGLE = 0.0;    // graus
-  private static final double MAX_ANGLE = 110.0;  // graus
-
+  private static final double MIN_POS = 0.15;
+  private static final double MAX_POS = 0.78; //exemplo :p
+   
   public IntakeSub() {
     SparkMaxConfig intakeAngConfig = new SparkMaxConfig();
     SparkMaxConfig intakeRotConfig = new SparkMaxConfig();
@@ -45,22 +46,26 @@ public class IntakeSub extends SubsystemBase {
       SparkMax.PersistMode.kPersistParameters
     );
 
-    IntakeAngPid.setTolerance(2.0);
-
    intakeAngleEncoder.setDutyCycleRange(0.0, 1.0);
+
+   IntakeAngPid.enableContinuousInput(0, 1);
+
+   IntakeAngPid.setTolerance(0.01);
   }
 
-  public void setIntakeAngle(double angleSetpoint){
-    angleSetpoint = MathUtil.clamp(angleSetpoint, MIN_ANGLE, MAX_ANGLE);
+  public void setIntakeAngle(double setpoint){
+    setpoint = MathUtil.clamp(setpoint, MIN_POS, MAX_POS);
 
-    double absolutePos = intakeAngleEncoder.get();
-    double currentAngle =
-        MIN_ANGLE + absolutePos * (MAX_ANGLE - MIN_ANGLE);
+    double currentPos = intakeAngleEncoder.get();
+    double output = IntakeAngPid.calculate(currentPos, setpoint);
+
+    if ((currentPos < MIN_POS && output < 0) || (currentPos > MAX_POS && output > 0)) {
+      output = 0;
+    }
     
-    double output = IntakeAngPid.calculate(currentAngle, angleSetpoint);
-    
-    output = MathUtil.clamp(output, -0.5, 0.5);
+    output = MathUtil.clamp(output, -0.4, 0.4);
     IntakeAng.set(output);
+    
   }
 
   public boolean atAngle() {
@@ -71,7 +76,12 @@ public class IntakeSub extends SubsystemBase {
     IntakeRot.set(Speed);
   }
 
+  public void setSpeeds(){
+    IntakeAng.set(0.2);
+  }
+
   @Override
   public void periodic() {
+    SmartDashboard.putNumber("DutyCycle",intakeAngleEncoder.get());
   }
 }

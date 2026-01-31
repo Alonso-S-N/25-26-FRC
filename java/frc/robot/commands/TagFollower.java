@@ -90,7 +90,6 @@ rotSpeed = MathUtil.applyDeadband(rotSpeed, 0.02);
         )
     );
 
-    /* ===== FINALIZAÇÃO ===== */
     boolean errorOK =
         reachedDistance &&
         Math.abs(txDeg) < 1.5;

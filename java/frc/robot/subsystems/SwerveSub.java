@@ -31,7 +31,7 @@ public class SwerveSub extends SubsystemBase {
 
   private final SwerveDrive swerve;
   private final NetworkTable limelight;
-  private static final List<Integer>  ValidTags = Arrays.asList(9,11,8,7,6,1,12,15,17,28,24,22,23,31,13,29,27);
+  private static final List<Integer>  ValidTags = Arrays.asList(9,11,8,7,6,1,12,15,17,28,24,22,23,31,13,29,27,25);
   private RobotConfig config;
   private VisionValidator visionValidator = new VisionValidator();
   private final NetworkTable motorTable = NetworkTableInstance.getDefault().getTable("Motors");
