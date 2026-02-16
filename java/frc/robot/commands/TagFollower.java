@@ -51,8 +51,8 @@ public class TagFollower extends Command {
 
     Transform3d camToTag = tagOpt.get();
 
-    double x = camToTag.getX(); // positivo = tag à esquerda/direita
-    double y = camToTag.getY(); // positivo = tag à frente
+    double x = camToTag.getX();
+    double y = camToTag.getY();
 
     double txDeg = swerve.getTx();
 

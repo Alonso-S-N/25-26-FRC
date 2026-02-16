@@ -17,7 +17,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class IntakeSub extends SubsystemBase {
   private SparkMax IntakeAng = new SparkMax(17,MotorType.kBrushless);
-  private SparkMax IntakeRot = new SparkMax(18,MotorType.kBrushless);
+  private SparkMax IntakeRot = new SparkMax(18,MotorType.kBrushed);
    
   private final DutyCycleEncoder intakeAngleEncoder = new DutyCycleEncoder(0);
 

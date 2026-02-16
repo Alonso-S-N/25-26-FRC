@@ -30,7 +30,7 @@ public class snapToTag extends Command {
     double rot;
 
     if (robotMoving) {
-      double distance = shooter.getDistanceToTag();
+      double distance = shooter.getDistanceToCenter();
 
       Rotation2d aim = shooter.getCompensatedAim(distance);
       

@@ -153,17 +153,16 @@ private final TagFollower tagFollower =
 // .onTrue(new ClimbCommand(ClimbSub, 0.0));
 
 new Trigger(ps5::getL2Button)
-.onTrue(sysIdDynamicForward());
+.whileTrue(sysIdDynamicForward());
 
 new Trigger(ps5::getR2Button)
-.onTrue(sysIdQuasiForward());
+.whileTrue(sysIdQuasiForward());
 
 new Trigger(ps5::getCrossButton)
-.onTrue(sysIdDynamicReverse());
+.whileTrue(sysIdDynamicReverse());
 
 new Trigger(ps5::getCircleButton)
-.onTrue(sysIdQuasiReverse());
-
+.whileTrue(sysIdQuasiReverse());
 
 new Trigger(ps5::getTriangleButton)
 .whileTrue(tagFollower);

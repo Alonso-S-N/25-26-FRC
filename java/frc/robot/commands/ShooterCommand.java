@@ -20,7 +20,7 @@ public class ShooterCommand extends Command {
   public void execute() {
     if (shotinho.HasTarget()){
       shotinho.shoot(
-        shotinho.getDistanceToTag()
+        shotinho.getDistanceToCenter()
       );
     } else {
       shotinho.StopShooter();

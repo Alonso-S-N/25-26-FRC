@@ -23,8 +23,8 @@ import edu.wpi.first.units.measure.Voltage;
 
 public class ShooterSub extends SubsystemBase {
 
-  private final SparkMax shooterMotor = new SparkMax(15, MotorType.kBrushless);
-  private final SparkMax feederMotor  = new SparkMax (16, MotorType.kBrushless);
+  private final SparkMax shooterMotor = new SparkMax(12, MotorType.kBrushless);
+  private final SparkMax feederMotor  = new SparkMax (11, MotorType.kBrushed);
 
 
   private final RelativeEncoder shooterEncoder = shooterMotor.getEncoder();
@@ -32,11 +32,12 @@ public class ShooterSub extends SubsystemBase {
       NetworkTableInstance.getDefault().getTable("limelight2");
 
   private static final double RpmTolerance = 75;
-  private static final double STABLE_TIME = 0.2;
+  private static final double STABLE_TIME = 0.1;
 
   private static final double G = 9.81;
-  private static double shotinhoAngDeg = 70.0;
+  private static double shotinhoAngDeg = 61;
     private static final double WHEEL_RADIUS = 0.05;
+  private double distanceCompensator = 0.60; //distance from tag to Hub Center
 
 
   
@@ -52,18 +53,15 @@ public class ShooterSub extends SubsystemBase {
       shooterConfig.idleMode(IdleMode.kCoast)
           .closedLoop
           .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-          .pid(0.0005, 0, 0)
-          .velocityFF(0.000175);
+          .pid(0.00003782, 0, 0) // 0.027229 valor retornado do SysId  valor utilizado 0.00003782 (normalizado x/720, testar ambos)
+          .velocityFF(0.00017633);
       shooterMotor.configure(
           shooterConfig,
           ResetMode.kResetSafeParameters,
           PersistMode.kPersistParameters
       );
-      SparkMaxConfig ShooterAngConfig = new SparkMaxConfig();
-      ShooterAngConfig.idleMode(IdleMode.kBrake);
   
     }
-  
   
     public boolean HasTarget() {
       return limelight.getEntry("tv").getDouble(0) == 1.0;
@@ -97,7 +95,7 @@ public class ShooterSub extends SubsystemBase {
    //================== RPM FROM DISTANCE ================== //
     public double getRPMFromDistance(double distanceMeters) {
   
-      double shooterHeight = 0.36;
+      double shooterHeight = 0.69;
       double targetHeight  = 1.82;
       double deltaH = targetHeight - shooterHeight;
   
@@ -114,7 +112,7 @@ public class ShooterSub extends SubsystemBase {
       );
   
       double wheelCircumference = 2 * Math.PI * WHEEL_RADIUS;
-      return MathUtil.clamp((v / wheelCircumference) * 60.0 * 1.25 , 600, 5000); // se necessario multiplicar pelo arrasto aero (1.25 ou 25%) :p
+      return MathUtil.clamp((v / wheelCircumference) * 60.0 * 1.15 , 600, 5000); // se necessario multiplicar pelo arrasto aero (1.25 ou 25%) :p
     }
   
     private double rpmToVelocity(double rpm) {
@@ -191,15 +189,15 @@ public class ShooterSub extends SubsystemBase {
       }
     }
   
-  // ================= DISTANCE TO TAG ================= //
-    public double getDistanceToTag() {
-      double cameraHeight = 0.67;
+  // ================= DISTANCE TO CENTER ================= //
+    public double getDistanceToCenter() {
+      double cameraHeight = 0.69;
       double targetHeight = 1.82;
-      double cameraAngle = 20;
+      double cameraAngle = 55;
       double ty = swerve.getTy();
   
       return (targetHeight - cameraHeight) /
-             Math.tan(Math.toRadians(cameraAngle + ty));
+             Math.tan(Math.toRadians(cameraAngle + ty)) + distanceCompensator ;
     }
 
 
