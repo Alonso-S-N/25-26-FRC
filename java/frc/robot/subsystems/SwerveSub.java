@@ -1,5 +1,4 @@
 package frc.robot.subsystems;
-
 import swervelib.SwerveDrive;
 import swervelib.parser.SwerveParser;
 import java.io.File;
@@ -11,6 +10,9 @@ import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.revrobotics.spark.SparkMax;
+
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
+import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.geometry.*;
@@ -31,19 +33,22 @@ public class SwerveSub extends SubsystemBase {
 
   private final SwerveDrive swerve;
   private final NetworkTable limelight;
+  private final NetworkTable limelight2;
   private static final List<Integer>  ValidTags = Arrays.asList(9,11,8,7,6,1,12,15,17,28,24,22,23,31,13,29,27,25);
   private RobotConfig config;
   private VisionValidator visionValidator = new VisionValidator();
   private final NetworkTable motorTable = NetworkTableInstance.getDefault().getTable("Motors");
-  
     TrapezoidProfile.Constraints constraints = new TrapezoidProfile.Constraints(3.0, 2.0);
+
+      public static final AprilTagFieldLayout kFieldLayout =
+      AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltAndymark);
 
       private final ProfiledPIDController snapPID =
     new ProfiledPIDController(2.5, 0.0, 0.0,constraints);
 
-
   public SwerveSub() {
     limelight = NetworkTableInstance.getDefault().getTable("limelight-front");
+    limelight2 = NetworkTableInstance.getDefault().getTable("limelight-back");
 
     try {
       File json = new File(Filesystem.getDeployDirectory(), "yagsl");
@@ -53,20 +58,17 @@ public class SwerveSub extends SubsystemBase {
       throw new RuntimeException("Erro ao criar Swerve", e);
     }
 
-    
     swerve.setGyroOffset(
       new Rotation3d(
           0.0,                     
           0.0,                     
-          Math.toRadians(180) // yaw (0°)
+          Math.toRadians(0) // yaw (0°)
       )
   );
-
     swerve.setCosineCompensator(false);
 
     snapPID.setTolerance(Math.toRadians(2.5));
     snapPID.enableContinuousInput(Math.toRadians(-90), Math.toRadians(90));
-
   }
 
   /* =================== DRIVE =================== */
@@ -99,19 +101,23 @@ public class SwerveSub extends SubsystemBase {
   }
 
   public double getTy(){
-    return limelight.getEntry("ty").getDouble(0);
+    return limelight2.getEntry("ty").getDouble(0);
   }
 
   public double getTx(){
-    return limelight.getEntry("tx").getDouble(0);
+    return limelight2.getEntry("tx").getDouble(0);
   }
   
   public double getTA(){
-    return limelight.getEntry("ta").getDouble(0);
+    return limelight2.getEntry("ta").getDouble(0);
   }
 
   public int getTagID() {
     return (int) limelight.getEntry("tid").getDouble(-1);
+  }
+
+  public int getTagID2() {
+    return (int) limelight2.getEntry("tid").getDouble(-1);
   }
 
   /* =================== LIMELIGHT =================== */
@@ -241,12 +247,12 @@ public void cancelSnap() {
           visionPose.getTranslation()
               .getDistance(getPose().getTranslation());
 
-      // Se erro grande e robô parado -> RESET
+      // se erro grande e robô parado -> reset
       if (error > 0.75 && robotStopped() && getTA() > 0.8) {
         swerve.resetOdometry(visionPose);
         visionValidator.reset();
       }
-      // Senão -> correção suave (MegaTag)
+      // senão -> correção (MegaTag)
       else if (error > 0.15){
   
         ChassisSpeeds speeds = swerve.getRobotVelocity();

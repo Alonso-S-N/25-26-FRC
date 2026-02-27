@@ -3,9 +3,14 @@ package frc.robot.subsystems;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.networktables.NetworkTable;
 import edu.wpi.first.networktables.NetworkTableInstance;
-import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.spark.FeedbackSensor;
 import com.revrobotics.spark.SparkBase.ControlType;
-import com.revrobotics.spark.SparkBase.PersistMode;
+import com.revrobotics.ResetMode;
+
+import java.util.Arrays;
+import java.util.List;
+
+import com.revrobotics.PersistMode;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.math.MathUtil;
@@ -13,23 +18,22 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.config.ClosedLoopConfig.FeedbackSensor;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+
 import edu.wpi.first.units.Units;
 import edu.wpi.first.units.measure.Voltage;
 
 public class ShooterSub extends SubsystemBase {
 
-  private final SparkMax shooterMotor = new SparkMax(12, MotorType.kBrushless);
-  private final SparkMax feederMotor  = new SparkMax (11, MotorType.kBrushed);
-
-
+  private final SparkMax shooterMotor = new SparkMax(13, MotorType.kBrushless);
+  private final SparkMax feederMotor  = new SparkMax (12, MotorType.kBrushed);
+    private static final List<Integer>  ValidTags = Arrays.asList(25,26,18,27,21,24,9,10,11,2,8,5);
   private final RelativeEncoder shooterEncoder = shooterMotor.getEncoder();
-  private final NetworkTable limelight =
-      NetworkTableInstance.getDefault().getTable("limelight2");
+  private final NetworkTable limelight2 =
+      NetworkTableInstance.getDefault().getTable("limelight-back");
 
   private static final double RpmTolerance = 75;
   private static final double STABLE_TIME = 0.1;
@@ -53,8 +57,12 @@ public class ShooterSub extends SubsystemBase {
       shooterConfig.idleMode(IdleMode.kCoast)
           .closedLoop
           .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-          .pid(0.00003782, 0, 0) // 0.027229 valor retornado do SysId  valor utilizado 0.00003782 (normalizado x/720, testar ambos)
-          .velocityFF(0.00017633);
+          .pid(0.00003782, 0, 0); // 0.027229 valor retornado do SysId  valor utilizado 0.00003782 (normalizado x/720, testar ambos)
+
+          shooterConfig.closedLoop.feedForward
+          .kV(0.012696)
+          .kS(0.11635)
+          .kA(0.014457);
       shooterMotor.configure(
           shooterConfig,
           ResetMode.kResetSafeParameters,
@@ -64,7 +72,7 @@ public class ShooterSub extends SubsystemBase {
     }
   
     public boolean HasTarget() {
-      return limelight.getEntry("tv").getDouble(0) == 1.0;
+      return limelight2.getEntry("tv").getDouble(0) == 1.0;
     }
   
     public void StopShooter() {
@@ -146,8 +154,8 @@ public class ShooterSub extends SubsystemBase {
 
       Translation2d robotVelocity =
           new Translation2d(
-              fieldSpeeds.vyMetersPerSecond,
-              fieldSpeeds.vxMetersPerSecond
+              fieldSpeeds.vxMetersPerSecond,
+              fieldSpeeds.vyMetersPerSecond
           );
   
       Translation2d offset = robotVelocity.times(timeOfFlight);
@@ -180,7 +188,7 @@ public class ShooterSub extends SubsystemBase {
       } 
   
       shooterMotor.getClosedLoopController()
-          .setReference(targetRPM, ControlType.kVelocity);
+          .setSetpoint(targetRPM, ControlType.kVelocity);
   
       if (atTargetRPM(targetRPM)) {
         feederMotor.set(0.6);
@@ -207,6 +215,18 @@ public class ShooterSub extends SubsystemBase {
       shooterMotor.setVoltage(volts.in(Units.Volts));
     }
     
+
+    public boolean ValidShootID(int tagID) {
+      if (HasTarget() && ValidTags.contains(tagID)){
+         return true;
+      }
+      return false;
+    }
+
+    public int getTagID() {
+      return swerve.getTagID2();
+    }
+    
     public Voltage sysIdGetAppliedVoltage() {
       return Units.Volts.of(
           shooterMotor.getBusVoltage() * shooterMotor.getAppliedOutput()
@@ -220,7 +240,7 @@ public class ShooterSub extends SubsystemBase {
 
   @Override
   public void periodic() {
- 
     SmartDashboard.putNumber("Shooter/RPM", shooterEncoder.getVelocity());
+    SmartDashboard.putNumber("TARGETRPM", getRPMFromDistance(getDistanceToCenter()));
     }
   }

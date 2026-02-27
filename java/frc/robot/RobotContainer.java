@@ -15,6 +15,7 @@ import frc.robot.subsystems.ShooterSub;
 import frc.robot.subsystems.SwerveSub;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.units.Units;
 import edu.wpi.first.wpilibj.PS5Controller;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -23,7 +24,6 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
-import edu.wpi.first.units.Units;
 
 import java.util.Set;
 import com.pathplanner.lib.auto.AutoBuilder;
@@ -40,9 +40,9 @@ public class RobotContainer {
  private final TesteSwerveMotors testeSwerveMotors = new TesteSwerveMotors(swerve);
  private final resetPoseByTag ResetPoseByTag = new resetPoseByTag(swerve);
  private final ShooterSub shooterSub = new ShooterSub(swerve);
- private final ShooterCommand ShooterCommand = new ShooterCommand(shooterSub);
- private final IntakeSub Intake = new IntakeSub();
  private final Armazenamento armazenamento = new Armazenamento();
+ private final ShooterCommand ShooterCommand = new ShooterCommand(shooterSub,armazenamento);
+ private final IntakeSub Intake = new IntakeSub();
  private final snapToTag snapToTag = new snapToTag(swerve, shooterSub);
  private final SysIdRoutine shooterSysId;
 
@@ -69,8 +69,8 @@ private final TagFollower tagFollower =
    Rotation2d.fromDegrees(150)
    );
 
-   private static final double IntakeRet = 0.23;
-   private static final double IntakeOff = 0.70;
+   private static final double IntakeRet = 0.75;
+   private static final double IntakeOff = 0.98;
 
   public RobotContainer() {
 
@@ -103,7 +103,7 @@ private final TagFollower tagFollower =
     NamedCommands.registerCommand("IntakeAngOn", new RunCommand(() -> Intake.setIntakeAngle(IntakeOff), Intake));
     NamedCommands.registerCommand("IntakeAngOff", new RunCommand(() -> Intake.setIntakeAngle(IntakeRet),Intake));
     NamedCommands.registerCommand("ShooterOn", ShooterCommand);
-    NamedCommands.registerCommand("IntakeRotOn", new RunCommand(() -> Intake.setIntakeRotSpeed(0.7), Intake));
+    NamedCommands.registerCommand("IntakeRotOn", new RunCommand(() -> Intake.setIntakeRotSpeed(1), Intake));
     NamedCommands.registerCommand("IntakeRotOff", new RunCommand(() -> Intake.setIntakeRotSpeed(0.0), Intake));
     NamedCommands.registerCommand("ClimbAuto", new ClimbCommand(ClimbSub, 0.50));
 
@@ -128,41 +128,41 @@ private final TagFollower tagFollower =
 
   public void configurationBindings() {
    
-//     new Trigger(ps5::getR2Button)
-//     .whileTrue(
-//         Commands.startEnd(
-//             () -> ClimbSub.setMotor(-0.1),
-//             () -> ClimbSub.STOP(),
-//             ClimbSub
-//         )
-//     );
-// new Trigger(ps5::getL2Button)
-// .whileTrue(
-//   Commands.startEnd(
-//       () -> ClimbSub.setMotor(0.1),
-//       () -> ClimbSub.STOP(),
-//       ClimbSub
-//   )
-// ); 
-
-
-// new Trigger(ps5::getCircleButton)
-// .onTrue(new ClimbCommand(ClimbSub, 0.50));
-
-// new Trigger(ps5::getCrossButton)
-// .onTrue(new ClimbCommand(ClimbSub, 0.0));
-
+    new Trigger(ps5::getR2Button)
+    .whileTrue(
+        Commands.startEnd(
+            () -> ClimbSub.setMotor(-0.3),
+            () -> ClimbSub.STOP(),
+            ClimbSub
+        )
+    );
 new Trigger(ps5::getL2Button)
-.whileTrue(sysIdDynamicForward());
+.whileTrue(
+  Commands.startEnd(
+      () -> ClimbSub.setMotor(0.3),
+      () -> ClimbSub.STOP(),
+      ClimbSub
+  )
+); 
 
-new Trigger(ps5::getR2Button)
-.whileTrue(sysIdQuasiForward());
-
-new Trigger(ps5::getCrossButton)
-.whileTrue(sysIdDynamicReverse());
 
 new Trigger(ps5::getCircleButton)
-.whileTrue(sysIdQuasiReverse());
+.onTrue(new ClimbCommand(ClimbSub, 0.50));
+
+new Trigger(ps5::getCrossButton)
+.onTrue(new ClimbCommand(ClimbSub, 0.0));
+
+// new Trigger(ps5::getL2Button)
+// .whileTrue(sysIdDynamicForward());
+
+// new Trigger(ps5::getR2Button)
+// .whileTrue(sysIdQuasiForward());
+
+// new Trigger(ps5::getCrossButton)
+// .whileTrue(sysIdDynamicReverse());
+
+// new Trigger(ps5::getCircleButton)
+// .whileTrue(sysIdQuasiReverse());
 
 new Trigger(ps5::getTriangleButton)
 .whileTrue(tagFollower);
@@ -195,18 +195,13 @@ new Trigger(ps5::getSquareButton)
     
     */
 
-    new Trigger(ps5::getR1Button)
-    .whileTrue(
-      Commands.deadline(
-        ShooterCommand,
-         snapToTag,
-        Commands.startEnd(
-          () -> armazenamento.setMotorArmazenamento(0.5),
-          armazenamento::StopMotorArmazenamento,
-          armazenamento
-        )
-      )
-    );
+ new Trigger(ps5::getR1Button)
+  .whileTrue(
+    Commands.deadline(
+      ShooterCommand,
+      snapToTag
+    )
+  );
 
   }
 

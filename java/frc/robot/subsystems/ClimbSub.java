@@ -5,18 +5,18 @@
 package frc.robot.subsystems;
 
 import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.SparkBase.PersistMode;
-import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import com.revrobotics.ResetMode;
+import com.revrobotics.PersistMode;
 
 public class ClimbSub extends SubsystemBase {
- private SparkMax climbMotor = new SparkMax(9,MotorType.kBrushless);
- private SparkMax climbMotor2 = new SparkMax(21,MotorType.kBrushless);
+ private SparkMax climbMotor = new SparkMax(14,MotorType.kBrushless);
+ private SparkMax climbMotor2 = new SparkMax(15,MotorType.kBrushless);
  public RelativeEncoder climbEncoder = climbMotor.getEncoder();
  
   public ClimbSub() {
@@ -34,7 +34,6 @@ public class ClimbSub extends SubsystemBase {
     // ------ apply Config ------//
       climbMotor.configure(Kbrake, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
       climbMotor2.configure(Kbrake2, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
-     
   }
      
     public void setMotor(double speed){

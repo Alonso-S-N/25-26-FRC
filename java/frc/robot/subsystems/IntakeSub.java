@@ -1,14 +1,11 @@
-// Copyright (c) FIRST and other WPILib contributors.
-// Open Source Software; you can modify and/or share it under the terms of
-// the WPILib BSD license file in the root directory of this project.
-
 package frc.robot.subsystems;
 
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
-
+import com.revrobotics.ResetMode;
+import com.revrobotics.PersistMode;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.wpilibj.DutyCycleEncoder;
@@ -16,15 +13,15 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class IntakeSub extends SubsystemBase {
-  private SparkMax IntakeAng = new SparkMax(17,MotorType.kBrushless);
-  private SparkMax IntakeRot = new SparkMax(18,MotorType.kBrushed);
+  private SparkMax IntakeAng = new SparkMax(10,MotorType.kBrushless);
+  private SparkMax IntakeRot = new SparkMax(9,MotorType.kBrushed);
    
   private final DutyCycleEncoder intakeAngleEncoder = new DutyCycleEncoder(0);
 
-  private PIDController IntakeAngPid = new PIDController(0.02, 0.0, 0.0);
+  private PIDController IntakeAngPid = new PIDController(0.17, 0.0, 0.0);
 
-  private static final double MIN_POS = 0.15;
-  private static final double MAX_POS = 0.78; //exemplo :p
+  private static final double MIN_POS = 0.071;
+  private static final double MAX_POS = 0.75; //exemplo :p
    
   public IntakeSub() {
     SparkMaxConfig intakeAngConfig = new SparkMaxConfig();
@@ -37,13 +34,13 @@ public class IntakeSub extends SubsystemBase {
     intakeRotConfig.openLoopRampRate(0);
 
     IntakeAng.configure(intakeAngConfig,
-      SparkMax.ResetMode.kResetSafeParameters,
-      SparkMax.PersistMode.kPersistParameters
+      ResetMode.kResetSafeParameters,
+      PersistMode.kPersistParameters
     ); 
 
     IntakeRot.configure(intakeRotConfig,
-      SparkMax.ResetMode.kResetSafeParameters,
-      SparkMax.PersistMode.kPersistParameters
+      ResetMode.kResetSafeParameters,
+      PersistMode.kPersistParameters
     );
 
    intakeAngleEncoder.setDutyCycleRange(0.0, 1.0);
@@ -63,13 +60,18 @@ public class IntakeSub extends SubsystemBase {
       output = 0;
     }
     
-    output = MathUtil.clamp(output, -0.4, 0.4);
+    output = MathUtil.clamp(output, -0.1, 0.1);
     IntakeAng.set(output);
     
   }
 
   public boolean atAngle() {
     return IntakeAngPid.atSetpoint();
+  }
+  
+  public void stopPID() {
+    IntakeAngPid.reset();
+    IntakeAng.set(0);
   }
 
   public void setIntakeRotSpeed(double Speed){

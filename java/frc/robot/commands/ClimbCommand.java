@@ -8,8 +8,8 @@ import frc.robot.subsystems.ClimbSub;
 
 public class ClimbCommand extends Command {
   private ClimbSub climb;
-  private PIDController climbPID = new PIDController(0.001, 0, 0.0001); // Exemplo de valores de ganho (Ajustar)
-  private ElevatorFeedforward ClimbFF = new ElevatorFeedforward(0.21, 0.81, 2.15,0); // Exemplo de valores de FF (Ajustar)
+  private PIDController climbPID = new PIDController(0.001, 0, 0.0001);
+  private ElevatorFeedforward ClimbFF = new ElevatorFeedforward(0.21, 0.81, 2.15,0); 
   private final double target;
 
   public ClimbCommand(ClimbSub climb, double target) {
@@ -20,7 +20,6 @@ public class ClimbCommand extends Command {
     addRequirements(climb);
   }
 
-  // Called when the command is initially scheduled.
   @Override
   public void initialize() {
     climbPID.reset();
@@ -42,7 +41,6 @@ public class ClimbCommand extends Command {
     climb.setMotor(MathUtil.clamp(output, -0.5, 0.5)); 
   }
 
-  // Called once the command ends or is interrupted.
   @Override
   public void end(boolean interrupted) {
     climb.STOP();
