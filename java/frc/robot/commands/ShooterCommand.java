@@ -21,7 +21,7 @@ public class ShooterCommand extends Command {
 
   @Override
   public void execute() {
-    if (shotinho.HasTarget() && shotinho.ValidShootID(shotinho.getTagID())){
+    if (shotinho.HasTarget() && shotinho.ValidShootID(shotinho.getTagID())) {
       shotinho.shoot(
         shotinho.getDistanceToCenter()
       );

@@ -5,15 +5,23 @@ import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.ShooterSub;
 import frc.robot.subsystems.SwerveSub;
+import java.util.function.DoubleSupplier;
 
 public class snapToTag extends Command {
 
   private final SwerveSub swerve;
   private final ShooterSub shooter;
 
-  public snapToTag(SwerveSub swerve, ShooterSub shooter) {
+
+private final DoubleSupplier xSupplier;
+private final DoubleSupplier ySupplier;
+
+  public snapToTag(SwerveSub swerve, ShooterSub shooter,  DoubleSupplier xSupplier,
+    DoubleSupplier ySupplier) {
     this.swerve = swerve;
     this.shooter = shooter;
+    this.xSupplier = xSupplier;
+    this.ySupplier = ySupplier;
     addRequirements(swerve);
   }
 
@@ -40,7 +48,8 @@ public class snapToTag extends Command {
     }
 
     swerve.drive(
-        new Translation2d(0, 0), 
+        new Translation2d(  xSupplier.getAsDouble(),
+        ySupplier.getAsDouble()), 
         rot,
         false,
         true

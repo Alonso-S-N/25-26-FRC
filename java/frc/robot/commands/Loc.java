@@ -56,7 +56,7 @@ public class Loc extends Command {
     }
     
     swerve.drive(
-    new Translation2d(y * MAX_SPEED, x * MAX_SPEED),
+    new Translation2d(x * MAX_SPEED, y * MAX_SPEED),
     rot,
     true,
     true

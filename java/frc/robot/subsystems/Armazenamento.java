@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+
 import edu.wpi.first.wpilibj.DutyCycleEncoder;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import com.revrobotics.spark.SparkMax;
@@ -18,6 +19,8 @@ public class Armazenamento extends SubsystemBase {
 
   private int cont = 0;
 
+
+
   public Armazenamento() {
     SparkMaxConfig configArmazenamento = new SparkMaxConfig();
 
@@ -31,7 +34,8 @@ public class Armazenamento extends SubsystemBase {
        PersistMode.kPersistParameters
     );
     spinCycle.setDutyCycleRange(0, 1);
-  }
+
+   }
   public void CycleCont(){
     if (spinCycle.get() == 0.7){
       cont++;

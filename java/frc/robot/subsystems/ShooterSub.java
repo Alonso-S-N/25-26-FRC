@@ -15,7 +15,9 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
@@ -41,7 +43,7 @@ public class ShooterSub extends SubsystemBase {
   private static final double G = 9.81;
   private static double shotinhoAngDeg = 61;
     private static final double WHEEL_RADIUS = 0.05;
-  private double distanceCompensator = 0.60; //distance from tag to Hub Center
+  private double distanceCompensator = 0.5969; //distance from tag to Hub Center
 
 
   
@@ -120,7 +122,7 @@ public class ShooterSub extends SubsystemBase {
       );
   
       double wheelCircumference = 2 * Math.PI * WHEEL_RADIUS;
-      return MathUtil.clamp((v / wheelCircumference) * 60.0 * 1.15 , 600, 5000); // se necessario multiplicar pelo arrasto aero (1.25 ou 25%) :p
+      return MathUtil.clamp((v / wheelCircumference) * 60.0 * 1.25 , 600, 5000); // se necessario multiplicar pelo arrasto aero (1.25 ou 25%) :p
     }
   
     private double rpmToVelocity(double rpm) {
@@ -165,7 +167,7 @@ public class ShooterSub extends SubsystemBase {
           swerve.getHeading().plus(new Rotation2d(txRad));
   
       Translation2d targetVector =
-          new Translation2d(distanceMeters, targetDirection);
+          new Translation2d(distanceMeters,0).rotateBy(targetDirection);
   
       Translation2d compensatedVector =
           targetVector.minus(offset);
@@ -176,10 +178,10 @@ public class ShooterSub extends SubsystemBase {
    // ===================== SHOOT ===================== //
     public void shoot(double distanceMeters) {
   
-      if (!HasTarget()) {
-        StopShooter();
-        return;
-      }
+      // if (!HasTarget()) {
+      //   StopShooter();
+      //   return;
+      // }
   
       double targetRPM = getRPMFromDistance(distanceMeters) ;
       if (targetRPM <= 0) {
@@ -191,22 +193,42 @@ public class ShooterSub extends SubsystemBase {
           .setSetpoint(targetRPM, ControlType.kVelocity);
   
       if (atTargetRPM(targetRPM)) {
-        feederMotor.set(0.6);
+        feederMotor.set(1.0);
       } else {
         feederMotor.set(0.0);
       }
     }
   
   // ================= DISTANCE TO CENTER ================= //
-    public double getDistanceToCenter() {
-      double cameraHeight = 0.69;
-      double targetHeight = 1.82;
-      double cameraAngle = 55;
-      double ty = swerve.getTy();
-  
-      return (targetHeight - cameraHeight) /
-             Math.tan(Math.toRadians(cameraAngle + ty)) + distanceCompensator ;
-    }
+public double getDistanceToCenter() {
+  double[] pose = limelight2.getEntry("targetpose_cameraspace").getDoubleArray(new double[0]);
+
+  if (pose.length >= 6 && HasTarget()) {
+    double x = pose[0];
+    double y = pose[1];
+    double z = pose[2];
+
+    Rotation3d camToTagRot = new Rotation3d(
+        Math.toRadians(pose[3]),
+        Math.toRadians(pose[4]),
+        Math.toRadians(pose[5])
+    );
+
+    Translation3d camToTag = new Translation3d(x, y, z);
+
+    Translation3d tagNormalInCam = new Translation3d(0, 0, 1).rotateBy(camToTagRot);
+
+    double hubHalfDepth = distanceCompensator; 
+
+    Translation3d camToHubCenter = camToTag.plus(tagNormalInCam.times(hubHalfDepth));
+
+    double horizontalDistance = Math.hypot(camToHubCenter.getX(), camToHubCenter.getZ());
+
+    return horizontalDistance;
+  }
+
+  return 0.0;
+}
 
 
     // ================= SYSID ================= //
@@ -242,5 +264,7 @@ public class ShooterSub extends SubsystemBase {
   public void periodic() {
     SmartDashboard.putNumber("Shooter/RPM", shooterEncoder.getVelocity());
     SmartDashboard.putNumber("TARGETRPM", getRPMFromDistance(getDistanceToCenter()));
+    SmartDashboard.putNumber("TARGETDISTANCE", getDistanceToCenter());
+    SmartDashboard.putNumber("TY", swerve.getTy());
     }
   }

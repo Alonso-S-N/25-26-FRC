@@ -43,7 +43,7 @@ public class RobotContainer {
  private final Armazenamento armazenamento = new Armazenamento();
  private final ShooterCommand ShooterCommand = new ShooterCommand(shooterSub,armazenamento);
  private final IntakeSub Intake = new IntakeSub();
- private final snapToTag snapToTag = new snapToTag(swerve, shooterSub);
+ private final snapToTag snapToTag = new snapToTag(swerve, shooterSub,ps5::getLeftX, ps5::getLeftY);
  private final SysIdRoutine shooterSysId;
 
 private final SendableChooser<Command> autoChooser;
@@ -128,29 +128,53 @@ private final TagFollower tagFollower =
 
   public void configurationBindings() {
    
-    new Trigger(ps5::getR2Button)
-    .whileTrue(
-        Commands.startEnd(
-            () -> ClimbSub.setMotor(-0.3),
-            () -> ClimbSub.STOP(),
-            ClimbSub
-        )
-    );
-new Trigger(ps5::getL2Button)
-.whileTrue(
-  Commands.startEnd(
-      () -> ClimbSub.setMotor(0.3),
-      () -> ClimbSub.STOP(),
-      ClimbSub
-  )
-); 
+//     new Trigger(ps5::getR2Button)
+//     .whileTrue(
+//         Commands.startEnd(
+//             () -> ClimbSub.setMotor(-0.3),
+//             () -> ClimbSub.STOP(),
+//             ClimbSub
+//         )
+//     );
+// new Trigger(ps5::getL2Button)
+// .whileTrue(
+//   Commands.startEnd(
+//       () -> ClimbSub.setMotor(0.3),
+//       () -> ClimbSub.STOP(),
+//       ClimbSub
+//   )
+// ); 
 
+  new Trigger(ps5::getL2Button)
+  .whileTrue(Commands.startEnd(
+    () -> Intake.setSpeeds(0.15),
+    () -> Intake.setSpeeds(0.0),
+     Intake));
 
-new Trigger(ps5::getCircleButton)
-.onTrue(new ClimbCommand(ClimbSub, 0.50));
+  new Trigger(ps5::getR2Button)
+  .whileTrue(Commands.startEnd(
+    () -> Intake.setSpeeds(-0.15),
+    () -> Intake.setSpeeds(0.0),
+     Intake));
+  
+ new Trigger(ps5::getCircleButton)
+ .toggleOnTrue(Commands.startEnd(
+  () -> Intake.setIntakeRotSpeed(1.0),
+  () -> Intake.setIntakeRotSpeed(0.0), 
+   Intake));
 
-new Trigger(ps5::getCrossButton)
-.onTrue(new ClimbCommand(ClimbSub, 0.0));
+  
+ new Trigger(ps5::getCrossButton)
+ .toggleOnTrue(Commands.startEnd(
+  () -> Intake.setIntakeRotSpeed(-1.0),
+  () -> Intake.setIntakeRotSpeed(0.0), 
+   Intake));
+
+// new Trigger(ps5::getCircleButton)
+// .onTrue(new ClimbCommand(ClimbSub, 0.50));
+
+// new Trigger(ps5::getCrossButton)
+// .onTrue(new ClimbCommand(ClimbSub, 0.0));
 
 // new Trigger(ps5::getL2Button)
 // .whileTrue(sysIdDynamicForward());
@@ -195,9 +219,25 @@ new Trigger(ps5::getSquareButton)
     
     */
 
+new Trigger(ps5::getL1Button)
+  .whileTrue(
+    Commands.startEnd(
+      () -> {
+        shooterSub.shoot(4.0);
+        armazenamento.setMotorArmazenamento(-1.0);
+      },
+      () -> {
+        shooterSub.StopShooter();
+        armazenamento.StopMotorArmazenamento(); 
+      },
+      shooterSub, armazenamento
+    )
+  );
+
+
  new Trigger(ps5::getR1Button)
   .whileTrue(
-    Commands.deadline(
+    Commands.parallel(
       ShooterCommand,
       snapToTag
     )

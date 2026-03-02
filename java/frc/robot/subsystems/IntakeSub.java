@@ -78,8 +78,8 @@ public class IntakeSub extends SubsystemBase {
     IntakeRot.set(Speed);
   }
 
-  public void setSpeeds(){
-    IntakeAng.set(0.2);
+  public void setSpeeds(double Speed){
+    IntakeAng.set(Speed);
   }
 
   @Override
