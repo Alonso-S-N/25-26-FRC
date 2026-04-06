@@ -1,7 +1,6 @@
 package frc.robot;
 
 import frc.robot.commands.resetPoseByTag;
-import frc.robot.commands.snapToTag;
 import frc.robot.commands.ClimbCommand;
 import frc.robot.commands.GoToPoseCommand;
 import frc.robot.commands.Loc;
@@ -43,7 +42,6 @@ public class RobotContainer {
  private final Armazenamento armazenamento = new Armazenamento();
  private final ShooterCommand ShooterCommand = new ShooterCommand(shooterSub,armazenamento);
  private final IntakeSub Intake = new IntakeSub();
- private final snapToTag snapToTag = new snapToTag(swerve, shooterSub,ps5::getLeftX, ps5::getLeftY);
  private final SysIdRoutine shooterSysId;
 
 private final SendableChooser<Command> autoChooser;
@@ -120,7 +118,7 @@ private final TagFollower tagFollower =
   
   SmartDashboard.putData("Auto Mode", autoChooser);
     
-    loc = new Loc(swerve,ps5);
+    loc = new Loc(swerve,shooterSub,ps5);
     swerve.setDefaultCommand(loc);
 
     configurationBindings();
@@ -224,7 +222,7 @@ new Trigger(ps5::getL1Button)
     Commands.startEnd(
       () -> {
         shooterSub.shoot(4.0);
-        armazenamento.setMotorArmazenamento(-1.0);
+        armazenamento.setMotorArmazenamento(1.0);
       },
       () -> {
         shooterSub.StopShooter();
@@ -237,13 +235,12 @@ new Trigger(ps5::getL1Button)
 
  new Trigger(ps5::getR1Button)
   .whileTrue(
-    Commands.parallel(
-      ShooterCommand,
-      snapToTag
-    )
+    Commands.startEnd(
+      () -> loc.setSnapMode(true),
+      () -> loc.setSnapMode(false)
+    ).alongWith(ShooterCommand)
   );
-
-  }
+}
 
   public Command sysIdQuasiForward() {
     return shooterSysId.quasistatic(SysIdRoutine.Direction.kForward);

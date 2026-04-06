@@ -25,7 +25,7 @@ public class ShooterCommand extends Command {
       shotinho.shoot(
         shotinho.getDistanceToCenter()
       );
-      armazenamento.AutoSpin();
+      armazenamento.setMotorArmazenamento(1.0);
     } else if (armazenamento.getCont() >= 16){ 
       shotinho.StopShooter();
     } else {
@@ -36,6 +36,7 @@ public class ShooterCommand extends Command {
   @Override
   public void end(boolean interrupted) {
     shotinho.StopShooter();
+    armazenamento.StopMotorArmazenamento();
   }
 
   @Override

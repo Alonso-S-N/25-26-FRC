@@ -1,5 +1,6 @@
 package frc.robot.commands;
 
+import frc.robot.subsystems.ShooterSub;
 import frc.robot.subsystems.SwerveSub;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.PS5Controller;
@@ -17,25 +18,32 @@ public class Loc extends Command {
       private PS5Controller ps5;
       private double y,x;
       private double MAX_SPEED = 3; // meters per second
+      private boolean snapMode = false;
+
+      private ShooterSub shooter;
       
 
       private final PIDController headingPID =
       new PIDController(2.0, 0.0, 0.2);
   
-    public Loc(SwerveSub swerve, PS5Controller ps5) {
-       headingPID.setTolerance(Math.toRadians(2.0));
-       this.swerve = swerve;
-       this.ps5 = ps5;
-
-       headingPID.enableContinuousInput(-Math.PI, Math.PI);
+   public Loc(SwerveSub swerve, ShooterSub shooter, PS5Controller ps5) {
+    this.swerve = swerve;
+    this.shooter = shooter;
+    this.ps5 = ps5;
     
-      addRequirements(swerve);
-    }
-  
+    headingPID.setTolerance(Math.toRadians(2.0));
+    headingPID.enableContinuousInput(-Math.PI, Math.PI);
+
+    addRequirements(swerve);
+}
     @Override
     public void initialize() {
 
   }
+
+  public void setSnapMode(boolean enabled) {
+  snapMode = enabled;
+}
 
   public void MainControll(){
     this.y = applyDeadband(ps5.getLeftY());
@@ -46,10 +54,23 @@ public class Loc extends Command {
      if (pov != -1) {
       rot = rotateToAngle(pov);
 
-    } else  if (ps5.getL1Button()) {
-      rot = swerve.getSnapRotation();
-      headingPID.reset();
-    } else {
+    } else if (snapMode && swerve.HasTarget()) {
+
+  boolean robotMoving = !swerve.robotStopped();
+
+  if (robotMoving) {
+
+    double distance = shooter.getDistanceToCenter();
+    Rotation2d aim = shooter.getCompensatedAim(distance);
+
+    rot = swerve.getSnapRotationCompensated(aim);
+
+  } else {
+
+    rot = swerve.getSnapRotation();
+  }
+
+} else {
       rot = applyDeadband(-ps5.getRightX()) * 2;
       swerve.cancelSnap();
       headingPID.reset();

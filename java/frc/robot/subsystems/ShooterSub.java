@@ -32,7 +32,7 @@ public class ShooterSub extends SubsystemBase {
 
   private final SparkMax shooterMotor = new SparkMax(13, MotorType.kBrushless);
   private final SparkMax feederMotor  = new SparkMax (12, MotorType.kBrushed);
-    private static final List<Integer>  ValidTags = Arrays.asList(25,26,18,27,21,24,9,10,11,2,8,5);
+    private static final List<Integer>  ValidTags = Arrays.asList(25,26,18,27,21,24,9,10,11,2,8,5,19);
   private final RelativeEncoder shooterEncoder = shooterMotor.getEncoder();
   private final NetworkTable limelight2 =
       NetworkTableInstance.getDefault().getTable("limelight-back");
@@ -191,12 +191,14 @@ public class ShooterSub extends SubsystemBase {
   
       shooterMotor.getClosedLoopController()
           .setSetpoint(targetRPM, ControlType.kVelocity);
+
+          feederMotor.set(1.0);
   
-      if (atTargetRPM(targetRPM)) {
-        feederMotor.set(1.0);
-      } else {
-        feederMotor.set(0.0);
-      }
+      // if (atTargetRPM(targetRPM)) {
+      //   feederMotor.set(1.0);
+      // } else {
+      //   feederMotor.set(0.0);
+      // }
     }
   
   // ================= DISTANCE TO CENTER ================= //
