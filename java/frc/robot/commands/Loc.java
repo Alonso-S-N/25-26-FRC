@@ -19,6 +19,8 @@ public class Loc extends Command {
       private double y,x;
       private double MAX_SPEED = 3; // meters per second
       private boolean snapMode = false;
+      private double rot;
+
 
       private ShooterSub shooter;
       
@@ -32,7 +34,7 @@ public class Loc extends Command {
     this.ps5 = ps5;
     
     headingPID.setTolerance(Math.toRadians(2.0));
-    headingPID.enableContinuousInput(-Math.PI, Math.PI);
+    headingPID.enableContinuousInput(Math.toRadians(-90), Math.toRadians(90));
 
     addRequirements(swerve);
 }
@@ -48,25 +50,30 @@ public class Loc extends Command {
   public void MainControll(){
     this.y = applyDeadband(ps5.getLeftY());
     this.x = applyDeadband(ps5.getLeftX());
-    double rot;
 
     int pov = ps5.getPOV();
      if (pov != -1) {
       rot = rotateToAngle(pov);
 
-    } else if (snapMode && swerve.HasTarget()) {
+    } else if (snapMode && shooter.HasTarget()) {
 
-  boolean robotMoving = !swerve.robotStopped();
+    boolean robotMoving =
+    Math.abs(swerve.getRobotVelocity().vxMetersPerSecond) > 0.05 ||
+    Math.abs(swerve.getRobotVelocity().vyMetersPerSecond) > 0.05;
 
   if (robotMoving) {
-
     double distance = shooter.getDistanceToCenter();
-    Rotation2d aim = shooter.getCompensatedAim(distance);
+   double tx = swerve.getTx();
 
-    rot = swerve.getSnapRotationCompensated(aim);
+double movingComp =
+shooter.getMovingShotTxComp();
+
+rot =
+swerve.getSnapRotationFromTx(
+    tx + movingComp
+);
 
   } else {
-
     rot = swerve.getSnapRotation();
   }
 
@@ -79,7 +86,7 @@ public class Loc extends Command {
     swerve.drive(
     new Translation2d(x * MAX_SPEED, y * MAX_SPEED),
     rot,
-    true,
+    false,
     true
 );
 }
@@ -108,6 +115,7 @@ private double rotateToAngle(double targetDegrees) {
     public void SmartdashBoard() {
     SmartDashboard.putNumber("X", x);
     SmartDashboard.putNumber("Y", y);
+    SmartDashboard.putNumber("Snap Rot", rot);
 
     swerve.getCameraToTag().ifPresent(tag ->
     SmartDashboard.putNumber(
@@ -115,6 +123,7 @@ private double rotateToAngle(double targetDegrees) {
         Math.toDegrees(tag.getRotation().getZ())
     )
 );
+   swerve.printOffsets();
   }
 
   @Override

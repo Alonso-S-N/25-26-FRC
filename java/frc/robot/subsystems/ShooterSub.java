@@ -14,6 +14,7 @@ import com.revrobotics.PersistMode;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -138,42 +139,31 @@ public class ShooterSub extends SubsystemBase {
     }
     
     //=============== COMPENSATED AIM =============== //
-    public Rotation2d getCompensatedAim(double distanceMeters) {
-  
-      double rpm = getRPMFromDistance(distanceMeters);
-      if (rpm <= 0) {
-        return swerve.getHeading();
-      }
-  
-      double timeOfFlight = getTimeOfFlight(distanceMeters, rpm);
-  
-      ChassisSpeeds speeds = swerve.getRobotVelocity();
-      ChassisSpeeds fieldSpeeds =
-      ChassisSpeeds.fromRobotRelativeSpeeds(
-          speeds,
-          swerve.getHeading()
-      );
+    public double getMovingShotTxComp() {
 
-      Translation2d robotVelocity =
-          new Translation2d(
-              fieldSpeeds.vxMetersPerSecond,
-              fieldSpeeds.vyMetersPerSecond
-          );
-  
-      Translation2d offset = robotVelocity.times(timeOfFlight);
-  
-      double txRad = Math.toRadians(swerve.getTx());
-      Rotation2d targetDirection =
-          swerve.getHeading().plus(new Rotation2d(txRad));
-  
-      Translation2d targetVector =
-          new Translation2d(distanceMeters,0).rotateBy(targetDirection);
-  
-      Translation2d compensatedVector =
-          targetVector.minus(offset);
-  
-      return compensatedVector.getAngle();
-    }
+    ChassisSpeeds speeds = swerve.getRobotVelocity();
+
+    ChassisSpeeds fieldSpeeds =
+        ChassisSpeeds.fromRobotRelativeSpeeds(
+            speeds,
+            swerve.getHeading()
+        );
+
+    double lateralVelocity = fieldSpeeds.vyMetersPerSecond;
+
+    double distance = getDistanceToCenter();
+
+    double rpm = getRPMFromDistance(distance);
+
+    double timeOfFlight = getTimeOfFlight(distance, rpm);
+
+    double lateralOffset = lateralVelocity * timeOfFlight;
+    
+    double angleComp =
+        Math.atan2(lateralOffset, distance);
+
+    return Math.toDegrees(angleComp);
+}
   
    // ===================== SHOOT ===================== //
     public void shoot(double distanceMeters) {

@@ -44,7 +44,7 @@ public class SwerveSub extends SubsystemBase {
       AprilTagFieldLayout.loadField(AprilTagFields.k2026RebuiltAndymark);
 
       private final ProfiledPIDController snapPID =
-    new ProfiledPIDController(2.5, 0.0, 0.0,constraints);
+    new ProfiledPIDController(4.0, 0.0, 0.25,constraints);
 
   public SwerveSub() {
     limelight = NetworkTableInstance.getDefault().getTable("limelight-front");
@@ -68,7 +68,7 @@ public class SwerveSub extends SubsystemBase {
     swerve.setCosineCompensator(false);
 
     snapPID.setTolerance(Math.toRadians(2.5));
-    snapPID.enableContinuousInput(Math.toRadians(-90), Math.toRadians(90));
+    snapPID.enableContinuousInput(-Math.PI, Math.PI);
   }
 
   /* =================== DRIVE =================== */
@@ -111,6 +111,11 @@ public class SwerveSub extends SubsystemBase {
   public double getTA(){
     return limelight2.getEntry("ta").getDouble(0);
   }
+
+  public boolean HasTarget2(){
+    return limelight2.getEntry("tv").getDouble(0) == 1;
+  }
+
 
   public int getTagID() {
     return (int) limelight.getEntry("tid").getDouble(-1);
@@ -181,7 +186,7 @@ public class SwerveSub extends SubsystemBase {
  
 public double getSnapRotation() {
 
-  if (!HasTarget()) {
+  if (!HasTarget2()) {
     snapPID.reset(0.0,0.0);
     return 0.0;
   }
@@ -201,24 +206,23 @@ public double getSnapRotation() {
  
 //================ SNAP COMPENSADO ================ //
 
-public double getSnapRotationCompensated(Rotation2d desiredHeading) {
+public double getSnapRotationFromTx(double txDegrees) {
 
-  Rotation2d current = getHeading();
+    double errorRadians =
+        Math.toRadians(txDegrees);
 
-  double errorRad =
-      desiredHeading.minus(current).getRadians();
+    double output =
+        snapPID.calculate(
+            errorRadians,
+            0
+        );
 
-  if (Math.abs(errorRad) < Math.toRadians(1.0)) {
-    snapPID.reset(0.0, 0.0);
-    return 0.0;
-  }
-
-  double rot = snapPID.calculate(errorRad, 0.0);
-
-  return MathUtil.clamp(rot, -2.0, 2.0);
+    return MathUtil.clamp(
+        -output,
+        -3.0,
+        3.0
+    );
 }
-
-
 public void cancelSnap() {
   snapPID.reset(0.0,0.0);
 }
@@ -360,4 +364,17 @@ public void testDriveMotor(int moduleIndex, double speed, String name) {
  public boolean HasTarget(){
   return limelight.getEntry("tv").getDouble(0) == 1;
  }
+
+public void printOffsets() {
+  for (int i = 0; i < 4; i++) {
+
+    double offset =
+        swerve.getModules()[i]
+        .getAbsolutePosition();
+
+    System.out.println(
+        "Module " + i + ": " + offset
+    );
+  }
+}
 }

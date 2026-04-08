@@ -126,34 +126,34 @@ private final TagFollower tagFollower =
 
   public void configurationBindings() {
    
-//     new Trigger(ps5::getR2Button)
-//     .whileTrue(
-//         Commands.startEnd(
-//             () -> ClimbSub.setMotor(-0.3),
-//             () -> ClimbSub.STOP(),
-//             ClimbSub
-//         )
-//     );
-// new Trigger(ps5::getL2Button)
-// .whileTrue(
-//   Commands.startEnd(
-//       () -> ClimbSub.setMotor(0.3),
-//       () -> ClimbSub.STOP(),
-//       ClimbSub
-//   )
-// ); 
+    new Trigger(ps5::getR2Button)
+    .whileTrue(
+        Commands.startEnd(
+            () -> ClimbSub.setMotor(-0.3),
+            () -> ClimbSub.STOP(),
+            ClimbSub
+        )
+    );
+new Trigger(ps5::getL2Button)
+.whileTrue(
+  Commands.startEnd(
+      () -> ClimbSub.setMotor(0.3),
+      () -> ClimbSub.STOP(),
+      ClimbSub
+  )
+); 
 
-  new Trigger(ps5::getL2Button)
-  .whileTrue(Commands.startEnd(
-    () -> Intake.setSpeeds(0.15),
-    () -> Intake.setSpeeds(0.0),
-     Intake));
+  // new Trigger(ps5::getL2Button)
+  // .whileTrue(Commands.startEnd(
+  //   () -> Intake.setSpeeds(0.15),
+  //   () -> Intake.setSpeeds(0.0),
+  //    Intake));
 
-  new Trigger(ps5::getR2Button)
-  .whileTrue(Commands.startEnd(
-    () -> Intake.setSpeeds(-0.15),
-    () -> Intake.setSpeeds(0.0),
-     Intake));
+  // new Trigger(ps5::getR2Button)
+  // .whileTrue(Commands.startEnd(
+  //   () -> Intake.setSpeeds(-0.15),
+  //   () -> Intake.setSpeeds(0.0),
+  //    Intake));
   
  new Trigger(ps5::getCircleButton)
  .toggleOnTrue(Commands.startEnd(
