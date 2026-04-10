@@ -13,12 +13,6 @@ WS_PATH = "/nt/dashboard"
 POLL_INTERVAL = 0.15
 clients = set()
 
-# ================= STREAMDECK =================
-SD_TABLE = "StreamDeck/IntakeAngle"
-SD_KEY = "toggleCount"
-toggle_count = 0
-# ==============================================
-
 TABLES_AND_KEYS = {
     "RobotStress": [
         "batteryVoltage",
@@ -29,27 +23,36 @@ TABLES_AND_KEYS = {
         "speedScale",
         "chassisSpeed"
     ],
-
     "StreamDeck/IntakeAngle": [
-        "toggleCount"
+        "toggleCount",
+        "calibrateZero",
+        "calibrateTarget"
     ],
-
+    "StreamDeck/IntakeRoller": [
+        "intakeToggle",
+        "outtakeToggle"
+    ],
+    "StreamDeck/Shooter": [
+        "shooterToggle"
+    ],
+    "StreamDeck/Climb": [
+        "climbUp",
+        "climbDown"
+    ],
     "limelight-back": [
-        "piece_tx",        # erro angular (graus)  
-        "ta",              # área do alvo     
-        "piece_distance",  # opcional
-        "has_target",      # bool   
-        "bbox",            # bounding box p/ UI    
-        "hw"               # health/watchdog
+        "piece_tx",
+        "ta",
+        "piece_distance",
+        "has_target",
+        "bbox",
+        "hw"
     ],
-
     "limelight-front": [
         "tx",
         "tv",
         "ta",
         "hw"
     ],
-
     "Modes": [
         "AimLockLime4",
         "AimLockLime2",
@@ -119,8 +122,6 @@ async def poll_and_broadcast():
         await asyncio.sleep(POLL_INTERVAL)
 
 async def handle_ws(ws):
-    global toggle_count
-
     print("WS conectado:", ws.remote_address)
     clients.add(ws)
 
@@ -136,30 +137,33 @@ async def handle_ws(ws):
 
         async for message in ws:
             obj = json.loads(message)
+            action = obj.get("action")
+            table_name = obj.get("table")
+            key = obj.get("key")
 
-            # ===== STREAMDECK PRESS =====
-            if obj.get("action") == "press":
-                toggle_count += 1
-                get_table(SD_TABLE).putNumber(SD_KEY, toggle_count)
-                print(f"StreamDeck toggleCount = {toggle_count}")
-                continue
+            # ===== PRESS — simula botão (True por 100ms, depois False) =====
+            if action == "press" and table_name and key:
+                nt_table = get_table(table_name)
+                nt_table.putBoolean(key, True)
+                await asyncio.sleep(0.1)
+                nt_table.putBoolean(key, False)
+                print(f"PRESS {table_name}/{key}")
 
-            # ===== PUT GENÉRICO (dashboard) =====
-            if obj.get("action") == "put":
-                table = get_table(obj["table"])
-                key = obj["key"]
-                value = obj["value"]
+            # ===== PUT GENÉRICO =====
+            elif action == "put" and table_name and key:
+                nt_table = get_table(table_name)
+                value = obj.get("value")
 
                 if isinstance(value, list):
-                    table.putNumberArray(key, value)
+                    nt_table.putNumberArray(key, value)
                 elif isinstance(value, bool):
-                    table.putBoolean(key, value)
+                    nt_table.putBoolean(key, value)
                 elif isinstance(value, (int, float)):
-                    table.putNumber(key, value)
+                    nt_table.putNumber(key, value)
                 else:
-                    table.putString(key, str(value))
+                    nt_table.putString(key, str(value))
 
-                print("PUT:", obj)
+                print(f"PUT {table_name}/{key} =", value)
 
     except Exception as e:
         print("WS erro:", e)
