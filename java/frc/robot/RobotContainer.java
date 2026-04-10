@@ -23,6 +23,9 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.RunCommand;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableEntry;
 
 import java.util.Set;
 import com.pathplanner.lib.auto.AutoBuilder;
@@ -43,6 +46,7 @@ public class RobotContainer {
  private final ShooterCommand ShooterCommand = new ShooterCommand(shooterSub,armazenamento);
  private final IntakeSub Intake = new IntakeSub();
  private final SysIdRoutine shooterSysId;
+private final NetworkTable sdClimb   = NetworkTableInstance.getDefault().getTable("StreamDeck/Climb");
 
 private final SendableChooser<Command> autoChooser;
 private final TagFollower tagFollower =
@@ -221,7 +225,7 @@ new Trigger(ps5::getL1Button)
   .whileTrue(
     Commands.startEnd(
       () -> {
-        shooterSub.shoot(4.0);
+        shooterSub.shoot(0.64);
         armazenamento.setMotorArmazenamento(1.0);
       },
       () -> {
@@ -232,7 +236,13 @@ new Trigger(ps5::getL1Button)
     )
   );
 
-
+new Trigger(() -> sdClimb.getEntry("climbUp").getBoolean(false))
+    .whileTrue(Commands.startEnd(
+        () -> ClimbSub.setMotor(-0.3),
+        () -> ClimbSub.STOP(),
+        ClimbSub
+    ));
+    
  new Trigger(ps5::getR1Button)
   .whileTrue(
     Commands.startEnd(

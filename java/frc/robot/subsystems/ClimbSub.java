@@ -9,6 +9,8 @@ import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import com.revrobotics.ResetMode;
@@ -71,6 +73,11 @@ public class ClimbSub extends SubsystemBase {
   @Override
   public void periodic() {
     SmartDashboard.putNumber("ClimbMotors OutPut", climbMotor.get());
+       SmartDashboard.putBoolean("SD/climbUp", 
+        NetworkTableInstance.getDefault()
+            .getTable("StreamDeck/Climb")
+            .getEntry("climbUp")
+            .getBoolean(false));
   }
 }
  
