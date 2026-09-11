@@ -1,0 +1,261 @@
+package frc.robot.subsystems;
+
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import com.revrobotics.spark.FeedbackSensor;
+import com.revrobotics.spark.SparkBase.ControlType;
+import com.revrobotics.ResetMode;
+
+import java.util.Arrays;
+import java.util.List;
+
+import com.revrobotics.PersistMode;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.math.MathUtil;
+
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.RelativeEncoder;
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+
+import edu.wpi.first.units.Units;
+import edu.wpi.first.units.measure.Voltage;
+
+public class ShooterSub extends SubsystemBase {
+
+  private final SparkMax shooterMotor = new SparkMax(13, MotorType.kBrushless);
+  private final SparkMax feederMotor  = new SparkMax (12, MotorType.kBrushed);
+    private static final List<Integer>  ValidTags = Arrays.asList(25,26,18,27,21,24,9,10,11,2,8,5,19);
+  private final RelativeEncoder shooterEncoder = shooterMotor.getEncoder();
+  private final NetworkTable limelight2 =
+      NetworkTableInstance.getDefault().getTable("limelight-back");
+
+  private static final double RpmTolerance = 75;
+  private static final double STABLE_TIME = 0.1;
+
+  private static final double G = 9.81;
+  private static double shotinhoAngDeg = 61;
+    private static final double WHEEL_RADIUS = 0.05;
+  private double distanceCompensator = 0.5969; 
+
+
+  
+    private final Timer rpmStableTimer = new Timer();
+    private boolean wasAtSpeed = false;
+  
+    private final SwerveSub swerve;
+  
+    public ShooterSub(SwerveSub swerve) {
+      this.swerve = swerve;
+  
+      SparkMaxConfig shooterConfig = new SparkMaxConfig();
+      shooterConfig.idleMode(IdleMode.kCoast)
+          .closedLoop
+          .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
+          .pid(0.027229, 0, 0); 
+
+          shooterConfig.closedLoop.feedForward
+          .kV(0.012696)
+          .kS(0.11635)
+          .kA(0.014457);
+      shooterMotor.configure(
+          shooterConfig,
+          ResetMode.kResetSafeParameters,
+          PersistMode.kPersistParameters
+      );
+  
+    }
+  
+    public boolean HasTarget() {
+      return limelight2.getEntry("tv").getDouble(0) == 1.0;
+    }
+  
+    public void StopShooter() {
+      shooterMotor.set(0);
+      feederMotor.set(0);
+      rpmStableTimer.stop();
+      rpmStableTimer.reset();
+      wasAtSpeed = false;
+    }
+  
+
+    private boolean atTargetRPM(double targetRPM) {
+      double error = Math.abs(shooterEncoder.getVelocity() - targetRPM);
+  
+      boolean atSpeed = error <= RpmTolerance;
+      if (atSpeed) {
+        if (!wasAtSpeed) {
+          rpmStableTimer.restart();
+          wasAtSpeed = true;
+        }
+      } else {
+        rpmStableTimer.reset();
+        wasAtSpeed = false;
+      }
+      return wasAtSpeed && rpmStableTimer.hasElapsed(STABLE_TIME);
+    }
+  
+   //================== RPM FROM DISTANCE ================== //
+    public double getRPMFromDistance(double distanceMeters) {
+  
+      double shooterHeight = 0.69;
+      double targetHeight  = 1.82;
+      double deltaH = targetHeight - shooterHeight;
+  
+      double angleRad = Math.toRadians(shotinhoAngDeg);
+  
+      double cos2 = Math.cos(angleRad) * Math.cos(angleRad);
+      double inner = distanceMeters * Math.tan(angleRad) - deltaH;
+  
+      if (inner <= 0) return 0;
+  
+      double v = Math.sqrt(
+          (G * distanceMeters * distanceMeters) /
+          (2.0 * cos2 * inner)
+      );
+  
+      double wheelCircumference = 2 * Math.PI * WHEEL_RADIUS;
+      return MathUtil.clamp((v / wheelCircumference) * 60.0 * 1.1 , 600, 5000); // se necessario multiplicar pelo arrasto aero (1.25 ou 25%) :p
+    }
+  
+    private double rpmToVelocity(double rpm) {
+      return (rpm / 60.0) * (2.0 * Math.PI * WHEEL_RADIUS);
+    }
+  
+    private double getTimeOfFlight(double distance, double rpm) {
+      if (rpm <= 0) return 0.0;
+  
+      double v = rpmToVelocity(rpm);
+      return distance /
+          (v * Math.cos(Math.toRadians(shotinhoAngDeg)));
+    }
+    
+    //=============== COMPENSATED AIM =============== //
+    public double getMovingShotTxComp() {
+
+    ChassisSpeeds speeds = swerve.getRobotVelocity();
+
+    ChassisSpeeds fieldSpeeds =
+        ChassisSpeeds.fromRobotRelativeSpeeds(
+            speeds,
+            swerve.getHeading()
+        );
+
+    double lateralVelocity = fieldSpeeds.vyMetersPerSecond;
+
+    double distance = getDistanceToCenter();
+
+    double rpm = getRPMFromDistance(distance);
+
+    double timeOfFlight = getTimeOfFlight(distance, rpm);
+
+    double lateralOffset = lateralVelocity * timeOfFlight;
+    
+    double angleComp =
+        Math.atan2(lateralOffset, distance);
+
+    return Math.toDegrees(angleComp);
+}
+  
+   // ===================== SHOOT ===================== //
+    public void shoot(double distanceMeters) {
+  
+      // if (!HasTarget()) {
+      //   StopShooter();
+      //   return;
+      // }
+  
+      double targetRPM = getRPMFromDistance(distanceMeters) ;
+      if (targetRPM <= 0) {
+        StopShooter();
+        return;
+      } 
+  
+      shooterMotor.getClosedLoopController()
+          .setSetpoint(targetRPM, ControlType.kVelocity);
+
+          feederMotor.set(1.0);
+  
+      // if (atTargetRPM(targetRPM)) {
+      //   feederMotor.set(1.0);
+      // } else {
+      //   feederMotor.set(0.0);
+      // }
+    }
+  
+  // ================= DISTANCE TO CENTER ================= //
+public double getDistanceToCenter() {
+  double[] pose = limelight2.getEntry("targetpose_cameraspace").getDoubleArray(new double[0]);
+
+  if (pose.length >= 6 && HasTarget()) {
+    double x = pose[0];
+    double y = pose[1];
+    double z = pose[2];
+
+    Rotation3d camToTagRot = new Rotation3d(
+        Math.toRadians(pose[3]),
+        Math.toRadians(pose[4]),
+        Math.toRadians(pose[5])
+    );
+
+    Translation3d camToTag = new Translation3d(x, y, z);
+
+    Translation3d tagNormalInCam = new Translation3d(0, 0, 1).rotateBy(camToTagRot);
+
+    double hubHalfDepth = distanceCompensator; 
+
+    Translation3d camToHubCenter = camToTag.plus(tagNormalInCam.times(hubHalfDepth));
+
+    double horizontalDistance = Math.hypot(camToHubCenter.getX(), camToHubCenter.getZ());
+
+    return horizontalDistance;
+  }
+
+  return 0.0;
+}
+
+
+    // ================= SYSID ================= //
+
+    public void sysIdDrive(Voltage volts) {
+      shooterMotor.setVoltage(volts.in(Units.Volts));
+    }
+    
+
+    public boolean ValidShootID(int tagID) {
+      if (HasTarget() && ValidTags.contains(tagID)){
+         return true;
+      }
+      return false;
+    }
+
+    public int getTagID() {
+      return swerve.getTagID2();
+    }
+    
+    public Voltage sysIdGetAppliedVoltage() {
+      return Units.Volts.of(
+          shooterMotor.getBusVoltage() * shooterMotor.getAppliedOutput()
+      );
+    }
+    
+    public double sysIdGetVelocityRadPerSec() {
+      return shooterEncoder.getVelocity() * 2.0 * Math.PI / 60.0;
+    }
+
+
+  @Override
+  public void periodic() {
+    SmartDashboard.putNumber("TARGETRPM", getRPMFromDistance(getDistanceToCenter()));
+    SmartDashboard.putNumber("Shooter/RPM", shooterEncoder.getVelocity());
+    System.out.println("Velocidade Shooter" + shooterEncoder.getVelocity());
+    SmartDashboard.putNumber("TARGETDISTANCE", getDistanceToCenter());
+    SmartDashboard.putNumber("TY", swerve.getTy());
+    }
+  }

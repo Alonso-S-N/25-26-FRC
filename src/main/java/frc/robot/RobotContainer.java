@@ -1,0 +1,306 @@
+package frc.robot;
+
+import frc.robot.commands.resetPoseByTag;
+import frc.robot.commands.ClimbCommand;
+import frc.robot.commands.GoToPoseCommand;
+import frc.robot.commands.Loc;
+import frc.robot.commands.ShooterCommand;
+import frc.robot.commands.TagFollower;
+import frc.robot.commands.TesteSwerveMotors;
+import frc.robot.subsystems.Armazenamento;
+import frc.robot.subsystems.ClimbSub;
+import frc.robot.subsystems.IntakeSub;
+import frc.robot.subsystems.ShooterSub;
+import frc.robot.subsystems.SwerveSub;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.units.Units;
+import edu.wpi.first.wpilibj.PS5Controller;
+import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.RunCommand;
+import edu.wpi.first.wpilibj2.command.button.Trigger;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.NetworkTable;
+
+import java.util.Set;
+import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
+
+
+public class RobotContainer {
+  
+
+ private final SwerveSub swerve = new SwerveSub();
+ private final Loc loc;
+ private final PS5Controller ps5 = new PS5Controller(0);
+ private final ClimbSub ClimbSub = new ClimbSub();
+ private final TesteSwerveMotors testeSwerveMotors = new TesteSwerveMotors(swerve);
+ private final resetPoseByTag ResetPoseByTag = new resetPoseByTag(swerve);
+ private final ShooterSub shooterSub = new ShooterSub(swerve);
+ private final Armazenamento armazenamento = new Armazenamento();
+ private final ShooterCommand ShooterCommand = new ShooterCommand(shooterSub,armazenamento);
+ private final IntakeSub Intake = new IntakeSub();
+ private final SysIdRoutine shooterSysId;
+private final NetworkTable sdClimb   = NetworkTableInstance.getDefault().getTable("StreamDeck/Climb");
+private final NetworkTable sdShoot   = NetworkTableInstance.getDefault().getTable("StreamDeck/Shooter");
+private final NetworkTable sdIntake = NetworkTableInstance.getDefault().
+getTable("StreamDeck/IntakeAngle");
+
+private final SendableChooser<Command> autoChooser;
+private final TagFollower tagFollower =
+    new TagFollower(swerve);
+    
+    Pose2d NeutralZone = new Pose2d(
+    7.70,
+    1.31,
+    Rotation2d.fromDegrees(90)
+);
+
+    Pose2d initialPose = new Pose2d(
+      2.0,
+      7.0,
+      Rotation2d.fromDegrees(0)
+    );
+    
+
+   Pose2d EndGamePose = new Pose2d(
+    1.5,
+    3.5,
+   Rotation2d.fromDegrees(150)
+   );
+
+   private static final double IntakeRet = 0.75;
+   private static final double IntakeOff = 0.98;
+
+  public RobotContainer() {
+
+    shooterSysId =
+    new SysIdRoutine(
+        new SysIdRoutine.Config(
+            Units.Volts.of(0.5).per(Units.Second),
+            Units.Volts.of(4),
+            null,
+            null
+        ),
+        new SysIdRoutine.Mechanism(
+            shooterSub::sysIdDrive,
+            log -> {
+              log.motor("shooter")
+                 .voltage(shooterSub.sysIdGetAppliedVoltage())
+                 .angularVelocity(
+                     Units.RadiansPerSecond.of(
+                         shooterSub.sysIdGetVelocityRadPerSec()
+                     )
+                 );
+            },
+            shooterSub
+        )
+    );
+
+
+    NamedCommands.registerCommand("ResetWithMegaTag2", ResetPoseByTag);
+    NamedCommands.registerCommand("FollowTag",tagFollower);
+    NamedCommands.registerCommand("IntakeAngOn", new RunCommand(() -> Intake.setIntakeAngle(IntakeOff), Intake));
+    NamedCommands.registerCommand("IntakeAngOff", new RunCommand(() -> Intake.setIntakeAngle(IntakeRet),Intake));
+    NamedCommands.registerCommand("ShooterOn", ShooterCommand);
+    NamedCommands.registerCommand("IntakeRotOn", new RunCommand(() -> Intake.setIntakeRotSpeed(1), Intake));
+    NamedCommands.registerCommand("IntakeRotOff", new RunCommand(() -> Intake.setIntakeRotSpeed(0.0), Intake));
+    NamedCommands.registerCommand("ClimbAuto", new ClimbCommand(ClimbSub, 0.50));
+
+         
+    swerve.configureAutoBuilder();
+
+    if (AutoBuilder.isConfigured()) {
+      autoChooser = AutoBuilder.buildAutoChooser();
+      System.out.println(" AutoChooser criado");
+  } else {
+      System.out.println("AutoBuilder NÃO configurado, AutoChooser vazio");
+      autoChooser = new SendableChooser<>();
+  }
+  
+  SmartDashboard.putData("Auto Mode", autoChooser);
+    
+    loc = new Loc(swerve,shooterSub,ps5);
+    swerve.setDefaultCommand(loc);
+
+    configurationBindings();
+  }
+
+  public void configurationBindings() {
+   
+    new Trigger(ps5::getTriangleButton)
+    .toggleOnTrue(
+        Commands.startEnd(
+            () -> ClimbSub.setMotor(-0.3),
+            () -> ClimbSub.STOP(),
+            ClimbSub
+        )
+    );
+new Trigger(ps5::getSquareButton)
+.toggleOnTrue(
+  Commands.startEnd(
+      () -> ClimbSub.setMotor(0.3),
+      () -> ClimbSub.STOP(),
+      ClimbSub
+  )
+); 
+
+  new Trigger(ps5::getL2Button)
+  .whileTrue(Commands.startEnd(
+    () -> Intake.setSpeeds(0.15),
+    () -> Intake.setSpeeds(0.0),
+     Intake));
+
+  new Trigger(ps5::getR2Button)
+  .whileTrue(Commands.startEnd(
+    () -> Intake.setSpeeds(-0.15),
+    () -> Intake.setSpeeds(0.0),
+     Intake));
+  
+ new Trigger(ps5::getCircleButton)
+ .toggleOnTrue(Commands.startEnd(
+  () -> Intake.setIntakeRotSpeed(1.0),
+  () -> Intake.setIntakeRotSpeed(0.0), 
+   Intake));
+
+  
+ new Trigger(ps5::getCrossButton)
+ .toggleOnTrue(Commands.startEnd(
+  () -> Intake.setIntakeRotSpeed(-1.0),
+  () -> Intake.setIntakeRotSpeed(0.0), 
+   Intake));
+
+// new Trigger(ps5::getCircleButton)
+// .onTrue(new ClimbCommand(ClimbSub, 0.50));
+
+// new Trigger(ps5::getCrossButton)
+// .onTrue(new ClimbCommand(ClimbSub, 0.0));
+
+// new Trigger(ps5::getL2Button)
+// .whileTrue(sysIdDynamicForward());
+
+// new Trigger(ps5::getR2Button)
+// .whileTrue(sysIdQuasiForward());
+
+// new Trigger(ps5::getCrossButton)
+// .whileTrue(sysIdDynamicReverse());
+
+// new Trigger(ps5::getCircleButton)
+// .whileTrue(sysIdQuasiReverse());
+
+// new Trigger(ps5::getTriangleButton)
+// .whileTrue(tagFollower);
+
+// new Trigger(ps5::getSquareButton)
+//   .toggleOnTrue(
+//     Commands.defer(
+//       () -> GoToPoseCommand.go(NeutralZone),
+//       Set.of(swerve)
+//     )
+//   );
+//   new Trigger(ps5::getTouchpadButton)
+//   .onTrue(
+//     Commands.sequence(
+//       ResetPoseByTag,
+//       GoToPoseCommand.go(EndGamePose)
+//     )
+//   );
+
+//   new Trigger(ps5::getOptionsButton)
+//   .toggleOnTrue(testeSwerveMotors);
+
+  /*new Trigger(ps5::getL1Button)
+  .whileTrue(
+    Commands.startEnd(
+      () -> shooterSub.DescobrirKV(),
+      () ->shooterSub.StopShooter(),
+    shooterSub
+    )); /*
+    
+    */
+
+new Trigger(ps5::getL1Button)
+  .whileTrue(
+    Commands.startEnd(
+      () -> {
+        shooterSub.shoot(0.64);
+        armazenamento.setMotorArmazenamento(1.0);
+      },
+      () -> {
+        shooterSub.StopShooter();
+        armazenamento.StopMotorArmazenamento(); 
+      },
+      shooterSub, armazenamento
+    )
+  );
+
+new Trigger(() -> sdClimb.getEntry("climbUp").getBoolean(false))
+    .onTrue(Commands.runOnce(() -> ClimbSub.setMotor(-0.3), ClimbSub))
+    .onFalse(Commands.runOnce(() -> ClimbSub.STOP(), ClimbSub));
+
+  new Trigger(()-> sdShoot.getEntry("shooterToggle").getBoolean(false))
+   .toggleOnTrue(Commands.startEnd(  
+    () -> {
+        shooterSub.shoot(0.64);
+        armazenamento.setMotorArmazenamento(1.0);
+      },
+      () -> {
+        shooterSub.StopShooter();
+        armazenamento.StopMotorArmazenamento(); 
+      },
+      shooterSub, armazenamento
+      ));
+
+      
+new Trigger(() -> sdClimb.getEntry("climbDown").getBoolean(false))
+    .onTrue(Commands.runOnce(() -> ClimbSub.setMotor(0.3), ClimbSub))
+    .onFalse(Commands.runOnce(() -> ClimbSub.STOP(), ClimbSub));
+
+new Trigger(() -> sdIntake.getEntry("manualPlus").getBoolean(false))
+ .whileTrue(Commands.startEnd(
+  () -> Intake.setSpeeds(0.15),
+  () -> Intake.stopPID(),
+  Intake
+ ));
+new Trigger(() -> sdIntake.getEntry("manualMinus").getBoolean(false))
+    .whileTrue(Commands.startEnd(
+  () -> Intake.setSpeeds(-0.15),
+  () -> Intake.stopPID(),
+  Intake
+ ));
+
+ new Trigger(ps5::getR1Button)
+  .whileTrue(
+    Commands.startEnd(
+      () -> loc.setSnapMode(true),
+      () -> loc.setSnapMode(false)
+    ).alongWith(ShooterCommand)
+  );
+}
+
+  public Command sysIdQuasiForward() {
+    return shooterSysId.quasistatic(SysIdRoutine.Direction.kForward);
+  }
+  
+  public Command sysIdQuasiReverse() {
+    return shooterSysId.quasistatic(SysIdRoutine.Direction.kReverse);
+  }
+  
+  public Command sysIdDynamicForward() {
+    return shooterSysId.dynamic(SysIdRoutine.Direction.kForward);
+  }
+  
+  public Command sysIdDynamicReverse() {
+    return shooterSysId.dynamic(SysIdRoutine.Direction.kReverse);
+  }
+  
+
+  public Command getAutonomousCommand() {
+    return autoChooser.getSelected();
+}
+
+}
